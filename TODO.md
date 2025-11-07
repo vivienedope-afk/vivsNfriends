@@ -1,6 +1,4 @@
-# Account Page Development TODO
+# TODO List for Adding Back Button to Navbar in account.php
 
-- [x] Create account.php with profile edit form, user info display, notification toggles, missed dues section, and payment ledger table.
-- [x] Create account.css with styles for the account page elements.
-- [x] Update index.php nav link to point to account.php.
-- [ ] Test the account page for functionality and responsiveness.
+- [x] Add back button element after the close button in the navbar, with an arrow-left icon linking to index.php
+- [x] Match design and positioning same as the back button on index.php navbar

@@ -7,23 +7,29 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <button class="menu-btn" onclick="toggleMenu()">☰</button>
+  <button class="menu-btn" onclick="toggleMenu()">
+    <i class="fas fa-bars"></i>
+  </button>
 
   <nav class="navbar" id="sidebar">
-    <button class="close-btn" onclick="toggleMenu()">×</button>
-    <img src="pics/Courtyard.png" alt="Courtyard Logo" class="logo" onclick="toggleDarkMode()">
+    <button class="close-btn" onclick="toggleMenu()">
+      <i class="fas fa-times"></i>
+    </button>
+    <img src="pics/Courtyard.png" alt="Courtyard Logo" class="logo">
     <ul class="nav-links">
-      <li><a href="account.php" onclick="closeMenu()"><span class="icon">👤</span><span class="text">Account</span></a></li>
-      <li><a href="index.php" onclick="closeMenu()"><span class="icon">📊</span><span class="text">Dashboard</span></a></li>
-
-      <li><a href="#" onclick="closeMenu()"><span class="icon">📅</span><span class="text">Calendar</span></a></li>
-      <li><a href="#" onclick="closeMenu()"><span class="icon">🏊</span><span class="text">Amenities</span></a></li>
-      <li><a href="#" onclick="closeMenu()"><span class="icon">🔑</span><span class="text">Login</span></a></li>
+      <li><a href="account.php" onclick="closeMenu()"><span class="icon"><i class="fas fa-user"></i></span><span class="text">Account</span></a></li>
+      <li class="active"><a href="index.php" onclick="closeMenu()"><span class="icon"><i class="fas fa-chart-line"></i></span><span class="text">Dashboard</span></a></li>
+      <li><a href="#" onclick="closeMenu()"><span class="icon"><i class="fas fa-calendar-alt"></i></span><span class="text">Calendar</span></a></li>
+      <li><a href="#" onclick="closeMenu()"><span class="icon"><i class="fas fa-swimming-pool"></i></span><span class="text">Amenities</span></a></li>
+      <li><a href="#" onclick="closeMenu()"><span class="icon"><i class="fas fa-sign-in-alt"></i></span><span class="text">Login</span></a></li>
     </ul>
-    <button class="back-button" onclick="goBack()">←</button>
+    <button class="back-button" onclick="goBack()">
+      <i class="fas fa-arrow-left"></i>
+    </button>
   </nav>
 
   <div class="overlay" id="overlay" onclick="closeMenu()"></div>
@@ -44,15 +50,19 @@
     <h1>Dashboard</h1>
     <section class="dashboard">
       <div class="card event">
-        <div class="card-header">📅 Upcoming Events</div>
+        <div class="card-header">
+          <i class="fas fa-calendar-alt"></i> Upcoming Events
+        </div>
         <div class="card-content">
-          <p>🏘 Community Cleanup - Nov 10</p>
-          <p>🎄 Christmas Party - Dec 20</p>
+          <p><i class="fas fa-home"></i> Community Cleanup - Nov 10</p>
+          <p><i class="fas fa-tree"></i> Christmas Party - Dec 20</p>
         </div>
       </div>
 
       <div class="card dues">
-        <div class="card-header">💰 Missed Dues</div>
+        <div class="card-header">
+          <i class="fas fa-money-bill-wave"></i> Missed Dues
+        </div>
         <div class="card-content">
           <p>You have <strong>1 unpaid due</strong> for October.</p>
           <p>Please settle before <b>Nov 10</b> to avoid late fees.</p>
@@ -60,7 +70,9 @@
       </div>
 
       <div class="card notice">
-        <div class="card-header">🔧 Maintenance Notices</div>
+        <div class="card-header">
+          <i class="fas fa-wrench"></i> Maintenance Notices
+        </div>
         <div class="card-content">
           <p>Water maintenance scheduled for <b>Nov 15</b>.</p>
           <p>Expect low pressure between 8 AM - 2 PM.</p>
@@ -73,10 +85,6 @@
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
     const menuBtn = document.querySelector('.menu-btn');
-
-    function toggleDarkMode() {
-      document.body.classList.toggle('dark-mode');
-    }
 
     function goBack() {
       window.history.back();

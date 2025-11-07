@@ -1,14 +1,205 @@
-/* ===============================
-   Account Page Styles (Improved)
-================================= */
+
+
+
+/* User Info Card Specific Styles */
+.user-info-card .info-group {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(193, 127, 89, 0.1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.user-info-card .info-group:last-child {
+  border-bottom: none;
+}
+
+.user-info-card .info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  position: relative;
+  min-width: 250px;
+  flex: 1;
+}
+
+.user-info-card .info-label {
+  font-weight: 500;
+  color: #8b572a;
+  flex: 0 0 140px;
+}
+
+.user-info-card .info-value {
+  flex: 1;
+  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Sensitive Info Styles */
+.sensitive-info .hidden-content {
+  filter: blur(4px);
+  transition: filter 0.3s ease;
+}
+
+.sensitive-info .hidden-content.visible {
+  filter: blur(0);
+}
+
+.toggle-visibility {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  opacity: 0.7;
+}
+
+.toggle-visibility:hover {
+  opacity: 1;
+  background: rgba(193, 127, 89, 0.1);
+}
+
+/* Status Badge */
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.status-badge.active {
+  background-color: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+  border: 1px solid rgba(40, 167, 69, 0.2);
+}
+
+/* Action Buttons */
+.actions-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(193, 127, 89, 0.1);
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid rgba(193, 127, 89, 0.2);
+  border-radius: 8px;
+  background: transparent;
+  color: #8b572a;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  background: rgba(193, 127, 89, 0.1);
+  border-color: rgba(193, 127, 89, 0.3);
+  transform: translateY(-1px);
+}
+
+.action-btn .icon {
+  font-size: 1em;
+}
+
+
+
+/* Page Header */
+.page-header {
+  padding: 30px 20px;
+  background: linear-gradient(135deg, rgba(193, 127, 89, 0.1), rgba(139, 87, 42, 0.05));
+  border-radius: 15px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.page-header h1 {
+  font-size: 2.5em;
+  color: #8b572a;
+  margin: 0;
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.breadcrumb {
+  color: #c17f59;
+  font-size: 0.9em;
+  margin-top: 10px;
+  opacity: 0.8;
+}
+
+/* Navigation Improvements */
+.logo-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+
+
+.active {
+  background: rgba(193, 127, 89, 0.1);
+  border-radius: 8px;     
+}
 
 /* Layout */
 .account-section {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-  margin-left: -60px;
-  padding-bottom: 40px;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 25px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Card Grid Positioning */
+.edit-profile-card {
+  grid-column: span 8;
+}
+
+.user-info-card {
+  grid-column: span 4;
+}
+
+.notification-card {
+  grid-column: span 4;
+}
+
+.dues-card {
+  grid-column: span 4;
+}
+
+.ledger-card {
+  grid-column: span 8;
+}
+
+@media (max-width: 1200px) {
+  .edit-profile-card,
+  .user-info-card,
+  .notification-card,
+  .dues-card,
+  .ledger-card {
+    grid-column: span 12;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 768px) {
@@ -22,31 +213,41 @@
    Card Styles
 ================================= */
 .account-section .card {
-  background-color: #fff3cd;
+  background: linear-gradient(145deg, #fff6d5, #fff0c5);
   color: #333;
-  border-radius: 10px;
+  border-radius: 15px;
   overflow: hidden;
-  transition: transform 0.25s ease, box-shadow 0.25s ease,
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(254, 222, 163, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease,
               background-color 0.3s, color 0.3s, border-color 0.3s;
+  backdrop-filter: blur(10px);
 }
 
 .account-section .card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border-color: rgba(254, 222, 163, 0.5);
 }
 
 .account-section .card-header {
-  background-color: #007bff;
-  color: white;
-  font-weight: bold;
-  padding: 10px 15px;
+  background: linear-gradient(135deg, #c17f59, #8b572a);
+  color: #fff;
+  font-weight: 600;
+  padding: 12px 16px;
   font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid rgba(254, 222, 163, 0.2);
 }
 
 .account-section .card-content {
-  padding: 15px;
-  font-size: 15px;
-  line-height: 1.5;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 /* ===============================
@@ -63,66 +264,123 @@ form label {
 }
 
 form input {
-  margin-bottom: 15px;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
-  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+  margin-bottom: 20px;
+  padding: 12px 15px;
+  border: 2px solid rgba(193, 127, 89, 0.2);
+  border-radius: 8px;
+  font-size: 15px;
+  background-color: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 form input:focus {
-  border-color: #007bff;
+  border-color: #c17f59;
   outline: none;
+  box-shadow: 0 0 0 3px rgba(193, 127, 89, 0.2);
+  transform: translateY(-2px);
 }
 
 form button {
-  padding: 10px;
-  background-color: #28a745;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #c17f59, #8b572a);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 16px;
-  transition: background-color 0.3s;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(139, 87, 42, 0.2);
 }
 
 form button:hover {
-  background-color: #218838;
+  background: linear-gradient(135deg, #d38a5f, #9c6230);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 87, 42, 0.3);
+}
+
+form button:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 10px rgba(139, 87, 42, 0.2);
 }
 
 /* ===============================
    Switch Styles (Notifications)
 ================================= */
-.switch {
+/* Notification Card Styles */
+.notification-card .card-header {
   display: flex;
-  position: relative;
-  justify-content: space-between;
-  margin-left: -130px;
   align-items: center;
-  margin-bottom: 12px;
-  font-size: 16px;
-  cursor: pointer;
+  gap: 12px;
 }
 
-.switch input {
+.notification-card .header-icon {
+  font-size: 1em;
+}
+
+.notification-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(193, 127, 89, 0.1);
+}
+
+.notification-option:last-child {
+  border-bottom: none;
+}
+
+.notification-info {
+  flex: 1;
+  padding-right: 15px;
+}
+
+.notification-info h3 {
+  margin: 0 0 4px 0;
+  font-size: 1em;
+  color: #8b572a;
+  font-weight: 600;
+}
+
+.notification-info p {
+  margin: 0;
+  font-size: 0.85em;
+  color: #666;
+  line-height: 1.3;
+}
+
+/* Toggle Switch Styles */
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  margin: 0;
+}
+
+.toggle input {
   opacity: 0;
   width: 0;
   height: 0;
 }
 
-.slider {
-  position: relative;
+.toggle-slider {
+  position: absolute;
   cursor: pointer;
-  width: 50px;
-  height: 24px;
-  background-color: #ccc;
-  transition: 0.4s;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #e0e0e0;
+  transition: .3s;
   border-radius: 24px;
-  margin-left: 10px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.slider:before {
+.toggle-slider:before {
   position: absolute;
   content: "";
   height: 18px;
@@ -130,50 +388,218 @@ form button:hover {
   left: 3px;
   bottom: 3px;
   background-color: white;
-  transition: 0.4s;
+  transition: .3s;
   border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-input:checked + .slider {
-  background-color: #2196f3;
+input:checked + .toggle-slider {
+  background-color: #c17f59;
 }
 
-input:checked + .slider:before {
-  transform: translateX(26px);
+input:checked + .toggle-slider:before {
+  transform: translateX(20px);
 }
+
+
 
 /* ===============================
    Table Styles (Payment Ledger)
 ================================= */
 .ledger-table {
   width: 100%;
-  border-collapse: collapse;
-  margin-top: 10px;
-  border-radius: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 15px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
 }
 
 .ledger-table th,
 .ledger-table td {
-  border: 1px solid #ddd;
-  padding: 10px 8px;
+  border: none;
+  border-bottom: 1px solid rgba(193, 127, 89, 0.1);
+  padding: 12px 16px;
   text-align: left;
   font-size: 14px;
 }
 
 .ledger-table th {
-  background-color: #f2f2f2;
-  font-weight: bold;
+  background-color: rgba(193, 127, 89, 0.05);
+  font-weight: 600;
+  color: #8b572a;
+  text-transform: uppercase;
+  font-size: 0.85em;
+  letter-spacing: 0.5px;
 }
 
-.ledger-table tr:nth-child(even) {
-  background-color: #f9f9f9;
+.ledger-table tr:last-child td {
+  border-bottom: none;
 }
 
 .ledger-table tr:hover {
-  background-color: #f1f1f1;
+  background-color: rgba(193, 127, 89, 0.02);
+}
+
+/* ===============================
+   Dues Card Styles
+================================= */
+.dues-card .card-content {
+  padding: 0;
+}
+
+.dues-alert {
+  display: flex;
+  padding: 16px;
+  gap: 16px;
+  align-items: center;
+}
+
+.dues-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(220, 53, 69, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dues-icon i {
+  font-size: 20px;
+  color: #dc3545;
+}
+
+.dues-info {
+  flex: 1;
+}
+
+.dues-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.1em;
+  color: #dc3545;
+}
+
+.dues-info p {
+  margin: 4px 0;
+  font-size: 0.95em;
+}
+
+.due-date {
+  color: #666;
+}
+
+.warning-text {
+  margin-top: 8px;
+  color: #dc3545;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dues-actions {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid rgba(193, 127, 89, 0.1);
+}
+
+.pay-now-btn,
+.payment-history-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.95em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pay-now-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  flex: 2;
+}
+
+.pay-now-btn:hover {
+  background: #c82333;
+  transform: translateY(-2px);
+}
+
+.payment-history-btn {
+  background: transparent;
+  color: #8b572a;
+  border: 1px solid rgba(193, 127, 89, 0.3);
+  flex: 1;
+}
+
+.payment-history-btn:hover {
+  background: rgba(193, 127, 89, 0.1);
+}
+
+/* ===============================
+   Ledger Card Styles
+================================= */
+.ledger-card .card-header {
+  justify-content: space-between;
+}
+
+.ledger-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-btn,
+.download-btn {
+  background: none;
+  border: none;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.filter-btn:hover,
+.download-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ledger-summary {
+  display: flex;
+  gap: 24px;
+  padding: 16px;
+  background: rgba(193, 127, 89, 0.05);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-item .label {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.summary-item .value {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #8b572a;
+}
+
+.text-warning {
+  color: #dc3545;
 }
 
 /* ===============================
@@ -189,62 +615,29 @@ input:checked + .slider:before {
 
 .ledger-table td:last-child:has(span.unpaid) {
   color: #dc3545;
+  }
+
+/* Override navbar animation to slide in from left */
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
-/* ===============================
-   Dark Mode Adjustments
-================================= */
-.dark-mode .account-section .card {
-  background-color: #333;
-  color: #fedea3;
+.navbar {
+  animation: slideInFromLeft 0.8s ease-out;
 }
 
-.dark-mode .account-section .card-header {
-  background-color: #5d3712;
-}
+/* Override mobile responsive for left slide */
+@media (max-width: 768px) {
+  .navbar {
+    transform: translateX(-100%);
+  }
 
-.dark-mode form input {
-  background-color: #555;
-  color: #fedea3;
-  border-color: #777;
-}
-
-.dark-mode form input:focus {
-  border-color: #fedea3;
-}
-
-.dark-mode form button {
-  background-color: #28a745;
-}
-
-.dark-mode .ledger-table {
-  background-color: #333;
-}
-
-.dark-mode .ledger-table th {
-  background-color: #444;
-  color: #fedea3;
-}
-
-.dark-mode .ledger-table td {
-  border-color: #777;
-  color: #fedea3;
-}
-
-.dark-mode .ledger-table tr:nth-child(even) {
-  background-color: #444;
-}
-
-.dark-mode .ledger-table tr:hover {
-  background-color: #555;
-}
-
-/* Smooth Dark Mode Transition */
-body,
-.card,
-form input,
-form button,
-.ledger-table th,
-.ledger-table td {
-  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+  .navbar.open {
+    transform: translateX(0);
+  }
 }
