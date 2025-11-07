@@ -1,9 +1,37 @@
+<?php
+require_once('auth/session_check.php');
+require_once('config/database.php');
+
+$conn = getDBConnection();
+$current_user = getCurrentUser();
+
+// Get user's household info
+$household_query = "SELECT h.*, hm.relationship FROM households h
+                    INNER JOIN household_members hm ON h.household_id = hm.household_id
+                    WHERE hm.user_id = ? AND hm.is_primary = 1";
+$stmt = $conn->prepare($household_query);
+$stmt->bind_param("i", $current_user['user_id']);
+$stmt->execute();
+$household = $stmt->get_result()->fetch_assoc();
+
+// Get payment ledger
+$ledger_query = "SELECT md.*, p.payment_date, p.amount_paid, p.payment_method, p.verified_by
+                 FROM monthly_dues md
+                 LEFT JOIN payments p ON md.dues_id = p.dues_id
+                 WHERE md.household_id = ?
+                 ORDER BY md.due_year DESC, md.due_date DESC
+                 LIMIT 12";
+$stmt2 = $conn->prepare($ledger_query);
+$stmt2->bind_param("i", $current_user['household_id']);
+$stmt2->execute();
+$ledger = $stmt2->get_result();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Account Page</title>
+  <title>Account - Maia Alta HOA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -15,28 +43,28 @@
 </head>
 <body>
   <button class="menu-btn" onclick="toggleMenu()">
-  <i class="fas fa-bars"></i>
+  ☰
 </button>
 
 <nav class="navbar" id="sidebar">
   <button class="close-btn" onclick="toggleMenu()">
-    <i class="fas fa-times"></i>
+    ✕
   </button>
   <button class="back-button" onclick="goBack()">
-    <i class="fas fa-arrow-left"></i>
+    ←
   </button>
   <img src="pics/Courtyard.png" alt="Courtyard Logo" class="logo">
-  <ul class="nav-links">
-    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'account.php') ? 'active' : ''; ?>"><a href="account.php" onclick="closeMenu()"><span class="icon"><i class="fas fa-user"></i></span><span class="text">Account</span></a></li>
-    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>"><a href="index.php" onclick="closeMenu()"><span class="icon"><i class="fas fa-chart-line"></i></span><span class="text">Dashboard</span></a></li>
-    <li><a href="#" onclick="closeMenu()"><span class="icon"><i class="fas fa-calendar-alt"></i></span><span class="text">Calendar</span></a></li>
-    <li><a href="#" onclick="closeMenu()"><span class="icon"><i class="fas fa-swimming-pool"></i></span><span class="text">Amenities</span></a></li>
-    <li><a href="#" onclick="closeMenu()"><span class="icon"><i class="fas fa-sign-in-alt"></i></span><span class="text">Login</span></a></li>
+    <ul class="nav-links">
+    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'home.php') ? 'active' : ''; ?>"><a href="home.php" onclick="closeMenu()"><span class="text">Home</span></a></li>
+    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'account.php') ? 'active' : ''; ?>"><a href="account.php" onclick="closeMenu()"><span class="text">Account</span></a></li>
+    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>"><a href="index.php" onclick="closeMenu()"><span class="text">Dashboard</span></a></li>
+    <li><a href="#" onclick="closeMenu()"><span class="text">Calendar</span></a></li>
+    <li><a href="#" onclick="closeMenu()"><span class="text">Amenities</span></a></li>
+    <li><a href="auth/logout.php" onclick="closeMenu()"><span class="text">Logout</span></a></li>
   </ul>
 </nav>
 
 <div class="overlay" id="overlay" onclick="closeMenu()"></div>
-
 
   <main>
     <div class="page-header">
@@ -47,10 +75,9 @@
     <section class="account-section">
       <div class="card edit-profile-card" id="editProfileCard">
         <div class="card-header">
-          <span class="header-icon"><i class="fas fa-user-edit"></i></span>
           <span>Edit Profile</span>
           <button class="minimize-btn" onclick="toggleEditProfile()">
-            <span class="minimize-icon"><i class="fas fa-minus"></i></span>
+            <span class="minimize-icon">−</span>
           </button>
         </div>
         <div class="card-content">
@@ -58,15 +85,14 @@
             <div class="form-group">
               <div class="input-group">
                 <label for="unitNumber">Unit Number</label>
-                <input type="text" id="unitNumber" name="unitNumber" value="Unit 1234" required>
+                <input type="text" id="unitNumber" name="unitNumber" value="<?php echo htmlspecialchars($household['unit_number'] ?? ''); ?>" required>
                 <span class="input-hint">Enter your complete unit number</span>
               </div>
               <div class="input-group">
                 <label for="residentType">Resident Type</label>
                 <select id="residentType" name="residentType" required>
-                  <option value="owner">Owner</option>
-                  <option value="tenant">Tenant</option>
-                  <option value="familyMember">Family Member</option>
+                  <option value="owner" <?php echo ($household['resident_type'] ?? '') == 'owner' ? 'selected' : ''; ?>>Owner</option>
+                  <option value="tenant" <?php echo ($household['resident_type'] ?? '') == 'tenant' ? 'selected' : ''; ?>>Tenant</option>
                 </select>
               </div>
             </div>
@@ -74,18 +100,18 @@
             <div class="form-group">
               <div class="input-group">
                 <label for="firstName">First Name</label>
-                <input type="text" id="firstName" name="firstName" value="John" required>
+                <input type="text" id="firstName" name="firstName" value="<?php echo htmlspecialchars($current_user['first_name']); ?>" required>
               </div>
               <div class="input-group">
                 <label for="lastName">Last Name</label>
-                <input type="text" id="lastName" name="lastName" value="Doe" required>
+                <input type="text" id="lastName" name="lastName" value="<?php echo htmlspecialchars($current_user['last_name']); ?>" required>
               </div>
             </div>
 
             <div class="form-group">
               <div class="input-group">
                 <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" value="john.doe@example.com" required>
+                <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($current_user['email']); ?>" required>
                 <span class="input-hint">This will be used for notifications</span>
               </div>
             </div>
@@ -93,9 +119,8 @@
             <div class="form-group">
               <div class="input-group">
                 <label for="phone">Contact Number</label>
-                <input type="tel" id="phone" name="phone" value="(123) 456-7890" 
-                       pattern="\(\d{3}\) \d{3}-\d{4}" required>
-                <span class="input-hint">Format: (123) 456-7890</span>
+                <input type="tel" id="phone" name="phone" value="<?php echo htmlspecialchars($current_user['contact_number'] ?? ''); ?>" required>
+                <span class="input-hint">Format: 09XXXXXXXXX</span>
               </div>
             </div>
 
@@ -114,10 +139,10 @@
 
             <div class="form-actions">
               <button type="button" class="secondary-btn" onclick="resetForm()">
-                <span class="icon"><i class="fas fa-undo"></i></span> Reset
+                Reset
               </button>
               <button type="submit" class="primary-btn">
-                <span class="icon"><i class="fas fa-save"></i></span> Save Changes
+                Save Changes
               </button>
             </div>
 
@@ -131,41 +156,44 @@
 
       <div class="card user-info-card">
         <div class="card-header">
-          <span class="header-icon"><i class="fas fa-id-card"></i></span>
           <span>Resident Information</span>
         </div>
         <div class="card-content">
           <div class="info-group">
             <div class="info-row">
+              <div class="info-label">Account Number</div>
+              <div class="info-value"><strong><?php echo htmlspecialchars($current_user['account_number']); ?></strong></div>
+            </div>
+            <div class="info-row">
               <div class="info-label">Unit Number</div>
-              <div class="info-value">Unit 1234</div>
+              <div class="info-value"><?php echo htmlspecialchars($household['unit_number'] ?? 'N/A'); ?></div>
             </div>
             <div class="info-row">
               <div class="info-label">Resident Type</div>
-              <div class="info-value">Owner</div>
+              <div class="info-value"><?php echo ucfirst($household['resident_type'] ?? 'N/A'); ?></div>
             </div>
           </div>
 
           <div class="info-group">
             <div class="info-row">
               <div class="info-label">Full Name</div>
-              <div class="info-value">John Doe</div>
+              <div class="info-value"><?php echo htmlspecialchars($current_user['full_name']); ?></div>
             </div>
             <div class="info-row sensitive-info">
               <div class="info-label">Email Address</div>
               <div class="info-value">
-                <span class="hidden-content" id="email-content">john.doe@example.com</span>
+                <span class="hidden-content" id="email-content"><?php echo htmlspecialchars($current_user['email']); ?></span>
                 <button class="toggle-visibility" onclick="toggleVisibility('email-content', this)">
-                  <span class="eye-icon"><i class="fas fa-eye"></i></span>
+                  <span class="eye-icon">👁</span>
                 </button>
               </div>
             </div>
             <div class="info-row sensitive-info">
               <div class="info-label">Contact Number</div>
               <div class="info-value">
-                <span class="hidden-content" id="phone-content">(123) 456-7890</span>
+                <span class="hidden-content" id="phone-content"><?php echo htmlspecialchars($current_user['contact_number'] ?? 'N/A'); ?></span>
                 <button class="toggle-visibility" onclick="toggleVisibility('phone-content', this)">
-                  <span class="eye-icon"><i class="fas fa-eye"></i></span>
+                  <span class="eye-icon">👁</span>
                 </button>
               </div>
             </div>
@@ -174,7 +202,7 @@
           <div class="info-group">
             <div class="info-row">
               <div class="info-label">Member Since</div>
-              <div class="info-value">January 2020</div>
+              <div class="info-value"><?php echo date('F Y', strtotime($household['move_in_date'] ?? 'now')); ?></div>
             </div>
             <div class="info-row">
               <div class="info-label">Status</div>
@@ -186,11 +214,9 @@
 
           <div class="actions-row">
             <button class="action-btn edit-info" onclick="editUserInfo()">
-              <span class="icon"><i class="fas fa-pencil-alt"></i></span>
               Update Information
             </button>
             <button class="action-btn verify-id" onclick="verifyIdentity()">
-              <span class="icon"><i class="fas fa-shield-alt"></i></span>
               Verify Identity
             </button>
           </div>
@@ -229,31 +255,24 @@
 
       <div class="card dues-card">
         <div class="card-header">
-          <span class="header-icon"><i class="fas fa-exclamation-circle"></i></span>
           <span>Payment Due</span>
         </div>
         <div class="card-content">
           <div class="dues-alert">
-            <div class="dues-icon">
-              <i class="fas fa-clock"></i>
-            </div>
             <div class="dues-info">
               <h3>October 2023 Payment Due</h3>
               <p>Amount: <strong>$150.00</strong></p>
               <p class="due-date">Due by: <b>November 10, 2023</b></p>
               <div class="warning-text">
-                <i class="fas fa-exclamation-triangle"></i>
-                Please settle to avoid late fees
+                ⚠ Please settle to avoid late fees
               </div>
             </div>
           </div>
           <div class="dues-actions">
             <button class="pay-now-btn">
-              <i class="fas fa-credit-card"></i>
               Pay Now
             </button>
             <button class="payment-history-btn">
-              <i class="fas fa-history"></i>
               Payment History
             </button>
           </div>
@@ -262,14 +281,13 @@
 
       <div class="card ledger-card">
         <div class="card-header">
-          <span class="header-icon"><i class="fas fa-file-invoice-dollar"></i></span>
           <span>Payment Ledger</span>
           <div class="ledger-actions">
             <button class="filter-btn" title="Filter Transactions">
-              <i class="fas fa-filter"></i>
+              Filter
             </button>
             <button class="download-btn" title="Download Statement">
-              <i class="fas fa-download"></i>
+              Download
             </button>
           </div>
         </div>
@@ -293,36 +311,30 @@
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody> 
+            <tbody>
+              <?php while ($row = $ledger->fetch_assoc()): ?>
               <tr>
-                <td>Oct 1, 2023</td>
+                <td><?php echo $row['due_month'] . ' ' . $row['due_year']; ?></td>
                 <td>Monthly Dues</td>
-                <td>$150.00</td>
-                <td>Paid</td>
+                <td>₱<?php echo number_format($row['amount'], 2); ?></td>
+                <td>
+                  <?php if ($row['status'] == 'paid'): ?>
+                    <span class="badge badge-success">Paid</span>
+                  <?php elseif ($row['status'] == 'overdue'): ?>
+                    <span class="badge badge-danger">Overdue</span>
+                  <?php else: ?>
+                    <span class="badge badge-warning">Unpaid</span>
+                  <?php endif; ?>
+                </td>
               </tr>
-              <tr>
-                <td>Sep 1, 2023</td>
-                <td>Monthly Dues</td>
-                <td>$150.00</td>
-                <td>Paid</td>
-              </tr>
-              <tr>
-                <td>Aug 1, 2023</td>
-                <td>Monthly Dues</td>
-                <td>$150.00</td>
-                <td>Paid</td>
-              </tr>
-              <tr>
-                <td>Nov 1, 2023</td>
-                <td>Monthly Dues</td>
-                <td>$150.00</td>
-                <td>Unpaid</td>
-              </tr>
+              <?php endwhile; ?>
             </tbody>
           </table>
         </div>
       </div>
     </section>
   </main>
-
+</body>
+</html>
+<?php $conn->close(); ?>
 

@@ -1,9 +1,31 @@
+<?php
+require_once('auth/session_check.php');
+require_once('config/database.php');
+
+$conn = getDBConnection();
+$current_user = getCurrentUser();
+
+// Get user's unpaid dues
+$unpaid_dues_query = "SELECT COUNT(*) as count FROM monthly_dues WHERE household_id = ? AND status = 'unpaid'";
+$stmt = $conn->prepare($unpaid_dues_query);
+$stmt->bind_param("i", $current_user['household_id']);
+$stmt->execute();
+$unpaid_count = $stmt->get_result()->fetch_assoc()['count'];
+
+// Get upcoming events
+$events_query = "SELECT * FROM events WHERE event_date >= CURDATE() AND status = 'upcoming' ORDER BY event_date ASC LIMIT 5";
+$events = $conn->query($events_query);
+
+// Get recent announcements
+$announcements_query = "SELECT * FROM announcements WHERE status = 'active' AND (expiry_date IS NULL OR expiry_date >= CURDATE()) ORDER BY post_date DESC LIMIT 3";
+$announcements = $conn->query($announcements_query);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Home Page</title>
+  <title>Dashboard - Maia Alta HOA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -12,32 +34,39 @@
 </head>
 <body>
   <button class="menu-btn" onclick="toggleMenu()">
-    <i class="fas fa-bars"></i>
+    ☰
   </button>
 
   <nav class="navbar" id="sidebar">
     <button class="close-btn" onclick="toggleMenu()">
-      <i class="fas fa-times"></i>
+      ✕
     </button>
     <img src="pics/Courtyard.png" alt="Courtyard Logo" class="logo">
+    <div class="user-info-sidebar">
+      <p class="user-name"><?php echo htmlspecialchars($current_user['full_name']); ?></p>
+      <p class="user-unit"><?php echo htmlspecialchars($current_user['unit_number']); ?></p>
+    </div>
     <ul class="nav-links">
-      <li><a href="account.php" onclick="closeMenu()"><span class="icon"><i class="fas fa-user"></i></span><span class="text">Account</span></a></li>
-      <li class="active"><a href="index.php" onclick="closeMenu()"><span class="icon"><i class="fas fa-chart-line"></i></span><span class="text">Dashboard</span></a></li>
-      <li><a href="#" onclick="closeMenu()"><span class="icon"><i class="fas fa-calendar-alt"></i></span><span class="text">Calendar</span></a></li>
-      <li><a href="#" onclick="closeMenu()"><span class="icon"><i class="fas fa-swimming-pool"></i></span><span class="text">Amenities</span></a></li>
-      <li><a href="#" onclick="closeMenu()"><span class="icon"><i class="fas fa-sign-in-alt"></i></span><span class="text">Login</span></a></li>
+      <li><a href="home.php" onclick="closeMenu()"><span class="text">Home</span></a></li>
+      <li><a href="account.php" onclick="closeMenu()"><span class="text">Account</span></a></li>
+      <li class="active"><a href="index.php" onclick="closeMenu()"><span class="text">Dashboard</span></a></li>
+      <li><a href="#" onclick="closeMenu()"><span class="text">Calendar</span></a></li>
+      <li><a href="#" onclick="closeMenu()"><span class="text">Amenities</span></a></li>
+      <li><a href="auth/logout.php" onclick="closeMenu()"><span class="text">Logout</span></a></li>
     </ul>
-    <button class="back-button" onclick="goBack()">
-      <i class="fas fa-arrow-left"></i>
-    </button>
   </nav>
 
   <div class="overlay" id="overlay" onclick="closeMenu()"></div>
 
   <main>
+    <div class="page-header">
+      <h1>Welcome back, <?php echo htmlspecialchars($current_user['first_name']); ?>!</h1>
+      <p class="breadcrumb">Dashboard</p>
+    </div>
+
     <div class="info-box">
       <button class="close-info-btn" onclick="closeInfoBox()">×</button>
-      <p>Welcome to Courtyard of Maia Alta, a tranquil residential community nestled in nature, offering modern amenities and a peaceful lifestyle. Here, you can enjoy serene surroundings, state-of-the-art facilities, and a strong sense of community. Whether you're relaxing in our lush courtyards or participating in neighborhood events, Courtyard of Maia Alta is your home away from the hustle and bustle.</p>
+      <p>Welcome to Courtyard of Maia Alta, a tranquil residential community nestled in nature, offering modern amenities and a peaceful lifestyle. Here, you can enjoy serene surroundings, state-of-the-art facilities, and a strong sense of community.</p>
       <h3>Rules and Regulations</h3>
       <ul>
         <li>Respect quiet hours from 10 PM to 6 AM to ensure a peaceful environment for all residents.</li>
@@ -47,35 +76,53 @@
         <li>Follow all HOA guidelines regarding property modifications and landscaping.</li>
       </ul>
     </div>
-    <h1>Dashboard</h1>
+
     <section class="dashboard">
       <div class="card event">
         <div class="card-header">
-          <i class="fas fa-calendar-alt"></i> Upcoming Events
+          Upcoming Events
         </div>
         <div class="card-content">
-          <p><i class="fas fa-home"></i> Community Cleanup - Nov 10</p>
-          <p><i class="fas fa-tree"></i> Christmas Party - Dec 20</p>
+          <?php if ($events->num_rows > 0): ?>
+            <?php while ($event = $events->fetch_assoc()): ?>
+              <p><?php echo htmlspecialchars($event['event_name']); ?> - <?php echo date('M d', strtotime($event['event_date'])); ?></p>
+            <?php endwhile; ?>
+          <?php else: ?>
+            <p>No upcoming events</p>
+          <?php endif; ?>
         </div>
       </div>
 
       <div class="card dues">
         <div class="card-header">
-          <i class="fas fa-money-bill-wave"></i> Missed Dues
+          Payment Status
         </div>
         <div class="card-content">
-          <p>You have <strong>1 unpaid due</strong> for October.</p>
-          <p>Please settle before <b>Nov 10</b> to avoid late fees.</p>
+          <?php if ($unpaid_count > 0): ?>
+            <p>You have <strong><?php echo $unpaid_count; ?> unpaid due<?php echo $unpaid_count > 1 ? 's' : ''; ?></strong>.</p>
+            <p>Please settle to avoid late fees.</p>
+            <a href="account.php" class="btn-pay">View Dues</a>
+          <?php else: ?>
+            <p>✓ All dues are paid!</p>
+            <p>Thank you for your prompt payment.</p>
+          <?php endif; ?>
         </div>
       </div>
 
       <div class="card notice">
         <div class="card-header">
-          <i class="fas fa-wrench"></i> Maintenance Notices
+          Announcements
         </div>
         <div class="card-content">
-          <p>Water maintenance scheduled for <b>Nov 15</b>.</p>
-          <p>Expect low pressure between 8 AM - 2 PM.</p>
+          <?php if ($announcements->num_rows > 0): ?>
+            <?php while ($announcement = $announcements->fetch_assoc()): ?>
+              <p><strong><?php echo htmlspecialchars($announcement['title']); ?></strong></p>
+              <p style="font-size: 13px; color: #666;"><?php echo substr(htmlspecialchars($announcement['content']), 0, 100); ?>...</p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 10px 0;">
+            <?php endwhile; ?>
+          <?php else: ?>
+            <p>No announcements at this time</p>
+          <?php endif; ?>
         </div>
       </div>
     </section>
@@ -113,3 +160,4 @@
   </script>
 </body>
 </html>
+<?php $conn->close(); ?>

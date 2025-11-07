@@ -1,0 +1,45 @@
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local Config (if you have environment-specific configs)
+config/local.php
+.env
+
+# Log Files
+*.log
+logs/
+
+# Temporary Files
+tmp/
+temp/
+cache/
+
+# Uploaded Files (if applicable)
+uploads/*
+!uploads/.gitkeep
+
+# Backup Files
+*.bak
+*.backup
+*.sql.backup
+
+# PHP Files
+vendor/
+composer.lock
+
+# Node modules (if using any frontend tools)
+node_modules/
+package-lock.json
+
+# Build files
+dist/
+build/
