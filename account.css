@@ -1,6 +1,5 @@
 
 
-
 /* User Info Card Specific Styles */
 .user-info-card .info-group {
   padding: 8px 0;
@@ -234,8 +233,8 @@
   background: linear-gradient(135deg, #c17f59, #8b572a);
   color: #fff;
   font-weight: 600;
-  padding: 12px 16px;
-  font-size: 16px;
+  padding: 10px 14px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   gap: 8px;

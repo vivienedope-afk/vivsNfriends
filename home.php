@@ -64,6 +64,7 @@ $events = $conn->query($events_query);
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="css/home.css">
+  <link rel="icon" type="image/png" href="pics/Courtyard.png">
 </head>
 <body>
   <button class="menu-btn" onclick="toggleMenu()">
@@ -74,6 +75,9 @@ $events = $conn->query($events_query);
     <button class="close-btn" onclick="toggleMenu()">
       ✕
     </button>
+    <button class="back-button" onclick="window.location.href='index.php'">
+      ←
+    </button>
     <img src="pics/Courtyard.png" alt="Courtyard Logo" class="logo">
     <div class="user-info-sidebar">
       <p class="user-name"><?php echo htmlspecialchars($current_user['full_name']); ?></p>
@@ -82,9 +86,8 @@ $events = $conn->query($events_query);
     <ul class="nav-links">
       <li class="active"><a href="home.php" onclick="closeMenu()"><span class="text">Home</span></a></li>
       <li><a href="account.php" onclick="closeMenu()"><span class="text">Account</span></a></li>
-      <li><a href="dashboard.php" onclick="closeMenu()"><span class="text">Dashboard</span></a></li>
-      <li><a href="#" onclick="closeMenu()"><span class="text">Calendar</span></a></li>
-      <li><a href="#" onclick="closeMenu()"><span class="text">Amenities</span></a></li>
+      <li><a href="calendar.php" onclick="closeMenu()"><span class="text">Calendar</span></a></li>
+      <li><a href="amenities.php" onclick="closeMenu()"><span class="text">Amenities</span></a></li>
       <li><a href="auth/logout.php" onclick="closeMenu()"><span class="text">Logout</span></a></li>
     </ul>
   </nav>

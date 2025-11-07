@@ -39,6 +39,7 @@ $ledger = $stmt2->get_result();
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="account.css">
   <link rel="stylesheet" href="profile-edit.css">
+  <link rel="icon" type="image/png" href="pics/Courtyard.png">
   <script src="script.js" defer></script>
 </head>
 <body>
@@ -54,12 +55,15 @@ $ledger = $stmt2->get_result();
     ←
   </button>
   <img src="pics/Courtyard.png" alt="Courtyard Logo" class="logo">
-    <ul class="nav-links">
+  <div class="user-info-sidebar">
+    <p class="user-name"><?php echo htmlspecialchars($current_user['full_name']); ?></p>
+    <p class="user-unit"><?php echo htmlspecialchars($current_user['unit_number']); ?></p>
+  </div>
+  <ul class="nav-links">
     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'home.php') ? 'active' : ''; ?>"><a href="home.php" onclick="closeMenu()"><span class="text">Home</span></a></li>
     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'account.php') ? 'active' : ''; ?>"><a href="account.php" onclick="closeMenu()"><span class="text">Account</span></a></li>
-    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>"><a href="index.php" onclick="closeMenu()"><span class="text">Dashboard</span></a></li>
-    <li><a href="#" onclick="closeMenu()"><span class="text">Calendar</span></a></li>
-    <li><a href="#" onclick="closeMenu()"><span class="text">Amenities</span></a></li>
+    <li><a href="calendar.php" onclick="closeMenu()"><span class="text">Calendar</span></a></li>
+    <li><a href="amenities.php" onclick="closeMenu()"><span class="text">Amenities</span></a></li>
     <li><a href="auth/logout.php" onclick="closeMenu()"><span class="text">Logout</span></a></li>
   </ul>
 </nav>
@@ -218,62 +222,6 @@ $ledger = $stmt2->get_result();
             </button>
             <button class="action-btn verify-id" onclick="verifyIdentity()">
               Verify Identity
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card notification-card">
-        <div class="card-header">
-          <span class="header-icon">🔔</span>
-          <span>Notification Settings</span>
-        </div>
-        <div class="card-content">
-          <div class="notification-option">
-            <div class="notification-info">
-              <h3>Email Notifications</h3>
-              <p>Receive updates about dues, events, and announcements via email</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="email-notif" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          
-          <div class="notification-option">
-            <div class="notification-info">
-              <h3>SMS Notifications</h3>
-              <p>Get important alerts and reminders via text message</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="sms-notif">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div class="card dues-card">
-        <div class="card-header">
-          <span>Payment Due</span>
-        </div>
-        <div class="card-content">
-          <div class="dues-alert">
-            <div class="dues-info">
-              <h3>October 2023 Payment Due</h3>
-              <p>Amount: <strong>$150.00</strong></p>
-              <p class="due-date">Due by: <b>November 10, 2023</b></p>
-              <div class="warning-text">
-                ⚠ Please settle to avoid late fees
-              </div>
-            </div>
-          </div>
-          <div class="dues-actions">
-            <button class="pay-now-btn">
-              Pay Now
-            </button>
-            <button class="payment-history-btn">
-              Payment History
             </button>
           </div>
         </div>
