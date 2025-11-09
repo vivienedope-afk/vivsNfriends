@@ -14,17 +14,7 @@ $stmt->bind_param("i", $current_user['user_id']);
 $stmt->execute();
 $household = $stmt->get_result()->fetch_assoc();
 
-// Get payment ledger
-$ledger_query = "SELECT md.*, p.payment_date, p.amount_paid, p.payment_method, p.verified_by
-                 FROM monthly_dues md
-                 LEFT JOIN payments p ON md.dues_id = p.dues_id
-                 WHERE md.household_id = ?
-                 ORDER BY md.due_year DESC, md.due_date DESC
-                 LIMIT 12";
-$stmt2 = $conn->prepare($ledger_query);
-$stmt2->bind_param("i", $current_user['household_id']);
-$stmt2->execute();
-$ledger = $stmt2->get_result();
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -50,9 +40,6 @@ $ledger = $stmt2->get_result();
 <nav class="navbar" id="sidebar">
   <button class="close-btn" onclick="toggleMenu()">
     ✕
-  </button>
-  <button class="back-button" onclick="goBack()">
-    ←
   </button>
   <img src="pics/Courtyard.png" alt="Courtyard Logo" class="logo">
   <div class="user-info-sidebar">
@@ -227,59 +214,7 @@ $ledger = $stmt2->get_result();
         </div>
       </div>
 
-      <div class="card ledger-card">
-        <div class="card-header">
-          <span>Payment Ledger</span>
-          <div class="ledger-actions">
-            <button class="filter-btn" title="Filter Transactions">
-              Filter
-            </button>
-            <button class="download-btn" title="Download Statement">
-              Download
-            </button>
-          </div>
-        </div>
-        <div class="card-content">
-          <div class="ledger-summary">
-            <div class="summary-item">
-              <span class="label">Total Paid (2023)</span>
-              <span class="value">$1,350.00</span>
-            </div>
-            <div class="summary-item">
-              <span class="label">Outstanding</span>
-              <span class="value text-warning">$150.00</span>
-            </div>
-          </div>
-          <table class="ledger-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Amount</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php while ($row = $ledger->fetch_assoc()): ?>
-              <tr>
-                <td><?php echo $row['due_month'] . ' ' . $row['due_year']; ?></td>
-                <td>Monthly Dues</td>
-                <td>₱<?php echo number_format($row['amount'], 2); ?></td>
-                <td>
-                  <?php if ($row['status'] == 'paid'): ?>
-                    <span class="badge badge-success">Paid</span>
-                  <?php elseif ($row['status'] == 'overdue'): ?>
-                    <span class="badge badge-danger">Overdue</span>
-                  <?php else: ?>
-                    <span class="badge badge-warning">Unpaid</span>
-                  <?php endif; ?>
-                </td>
-              </tr>
-              <?php endwhile; ?>
-            </tbody>
-          </table>
-        </div>
-      </div>
+
     </section>
   </main>
 </body>

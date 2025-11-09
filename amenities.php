@@ -28,9 +28,6 @@ $current_user = getCurrentUser();
     <button class="close-btn" onclick="toggleMenu()">
       ✕
     </button>
-    <button class="back-button" onclick="window.location.href='home.php'">
-      ←
-    </button>
     <img src="pics/Courtyard.png" alt="Courtyard Logo" class="logo">
     <div class="user-info-sidebar">
       <p class="user-name"><?php echo htmlspecialchars($current_user['full_name']); ?></p>

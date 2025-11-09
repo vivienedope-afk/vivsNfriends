@@ -96,3 +96,102 @@ document.getElementById('reservationForm').addEventListener('submit', function(e
     alert('An error occurred while submitting the reservation.');
   });
 });
+
+// Settings Modal Functions
+function openSettingsModal() {
+  const modal = document.getElementById('settingsModal');
+  modal.style.display = 'block';
+
+  // Load current preferences
+  loadNotificationPreferences();
+}
+
+function closeSettingsModal() {
+  const modal = document.getElementById('settingsModal');
+  modal.style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  const modal = document.getElementById('settingsModal');
+  if (event.target == modal) {
+    modal.style.display = 'none';
+  }
+}
+
+// Load notification preferences from server
+function loadNotificationPreferences() {
+  fetch('save_notification_settings.php?action=get', {
+    credentials: 'same-origin'  // Include session cookies
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('email_notifications').checked = data.preferences.email_notifications;
+        document.getElementById('sms_notifications').checked = data.preferences.sms_notifications;
+      } else {
+        console.error('Error loading preferences:', data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Error loading preferences:', error);
+    });
+}
+
+// Save notification settings
+function saveNotificationSettings() {
+  const emailNotifications = document.getElementById('email_notifications').checked;
+  const smsNotifications = document.getElementById('sms_notifications').checked;
+
+  const formData = new FormData();
+  formData.append('email_notifications', emailNotifications ? 1 : 0);
+  formData.append('sms_notifications', smsNotifications ? 1 : 0);
+
+  fetch('save_notification_settings.php?action=save', {
+    method: 'POST',
+    body: formData,
+    credentials: 'same-origin'  // Include session cookies
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Network response was not ok: ' + response.status);
+    }
+    return response.json();
+  })
+  .then(data => {
+    if (data.success) {
+      alert('Notification settings saved successfully!');
+      closeSettingsModal();
+    } else {
+      alert('Error saving settings: ' + data.message);
+      console.error('Server error:', data);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred while saving settings: ' + error.message);
+  });
+}
+
+// Ledger Modal Functions
+function openLedgerModal() {
+  const modal = document.getElementById('ledgerModal');
+  modal.style.display = 'block';
+}
+
+function closeLedgerModal() {
+  const modal = document.getElementById('ledgerModal');
+  modal.style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  const settingsModal = document.getElementById('settingsModal');
+  const ledgerModal = document.getElementById('ledgerModal');
+  if (event.target == settingsModal) {
+    settingsModal.style.display = 'none';
+  }
+  if (event.target == ledgerModal) {
+    ledgerModal.style.display = 'none';
+  }
+}

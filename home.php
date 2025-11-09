@@ -35,6 +35,18 @@ $stmt3->bind_param("i", $current_user['household_id']);
 $stmt3->execute();
 $outstanding_summary = $stmt3->get_result()->fetch_assoc();
 
+// Get payment ledger
+$ledger_query = "SELECT md.*, p.payment_date, p.amount_paid, p.payment_method, p.verified_by
+                 FROM monthly_dues md
+                 LEFT JOIN payments p ON md.dues_id = p.dues_id
+                 WHERE md.household_id = ?
+                 ORDER BY md.due_year DESC, md.due_date DESC
+                 LIMIT 12";
+$stmt4 = $conn->prepare($ledger_query);
+$stmt4->bind_param("i", $current_user['household_id']);
+$stmt4->execute();
+$ledger = $stmt4->get_result();
+
 // Get recent announcements
 $announcements_query = "SELECT a.*, CONCAT(u.first_name, ' ', u.last_name) as posted_by_name
                         FROM announcements a
@@ -65,6 +77,7 @@ $events = $conn->query($events_query);
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="css/home.css">
   <link rel="icon" type="image/png" href="pics/Courtyard.png">
+  <script src="script.js"></script>
 </head>
 <body>
   <button class="menu-btn" onclick="toggleMenu()">
@@ -74,9 +87,6 @@ $events = $conn->query($events_query);
   <nav class="navbar" id="sidebar">
     <button class="close-btn" onclick="toggleMenu()">
       ✕
-    </button>
-    <button class="back-button" onclick="window.location.href='index.php'">
-      ←
     </button>
     <img src="pics/Courtyard.png" alt="Courtyard Logo" class="logo">
     <div class="user-info-sidebar">
@@ -96,107 +106,14 @@ $events = $conn->query($events_query);
 
   <main>
     <div class="page-header">
-      <h1>Welcome back, <?php echo htmlspecialchars($current_user['first_name']); ?>!</h1>
-      <p class="breadcrumb">Home</p>
-    </div>
-
-    <div class="home-grid">
-      <!-- Notification Settings Card -->
-      <div class="card notification-settings-card">
-        <div class="card-header">
-          <span>Notification Settings</span>
+      <div class="header-content">
+        <div>
+          <h1>Welcome back, <?php echo htmlspecialchars($current_user['first_name']); ?>!</h1>
+          <p class="breadcrumb">Home</p>
         </div>
-        <div class="card-content">
-          <div class="notification-option">
-            <div class="notification-info">
-              <h3>Email Notifications</h3>
-              <p>Receive updates about dues, events, and announcements via email</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="email-notif" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          
-          <div class="notification-option">
-            <div class="notification-info">
-              <h3>SMS Notifications</h3>
-              <p>Get important alerts and reminders via text message</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="sms-notif">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <!-- Payment Due Card -->
-      <?php if ($unpaid_due): ?>
-      <div class="card payment-due-card">
-        <div class="card-header">
-          <span>Payment Due</span>
-        </div>
-        <div class="card-content">
-          <div class="payment-due-info">
-            <h3><?php echo htmlspecialchars($unpaid_due['due_month'] . ' ' . $unpaid_due['due_year']); ?> Payment Due</h3>
-            <div class="amount-display">
-              <span class="label">Amount:</span>
-              <span class="amount">₱<?php echo number_format($unpaid_due['amount'], 2); ?></span>
-            </div>
-            <div class="due-date-display">
-              <span class="label">Due by:</span>
-              <span class="due-date"><?php echo date('F d, Y', strtotime($unpaid_due['due_date'])); ?></span>
-            </div>
-            <div class="warning-message">
-              Please settle to avoid late fees
-            </div>
-          </div>
-          <div class="payment-actions">
-            <button class="pay-now-btn">
-              Pay Now
-            </button>
-            <a href="account.php" class="payment-history-link">
-              Payment History
-            </a>
-          </div>
-        </div>
-      </div>
-      <?php else: ?>
-      <div class="card payment-due-card all-paid">
-        <div class="card-header">
-          <span>Payment Status</span>
-        </div>
-        <div class="card-content">
-          <div class="all-paid-message">
-            <h3>All Payments Up to Date!</h3>
-            <p>Thank you for your prompt payment</p>
-          </div>
-          <a href="account.php" class="payment-history-link">
-            View Payment History
-          </a>
-        </div>
-      </div>
-      <?php endif; ?>
-    </div>
-
-    <!-- Payment Ledger Summary -->
-    <div class="card ledger-summary-card">
-      <div class="card-header">
-        <span>Payment Ledger Summary</span>
-        <a href="account.php" class="view-all-link">View Full Ledger</a>
-      </div>
-      <div class="card-content">
-        <div class="ledger-stats">
-          <div class="stat-item">
-            <div class="stat-label">Total Paid (<?php echo $year; ?>)</div>
-            <div class="stat-value paid">₱<?php echo number_format($paid_summary['total_paid'] ?? 0, 2); ?></div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-label">Outstanding</div>
-            <div class="stat-value outstanding">₱<?php echo number_format($outstanding_summary['total_outstanding'] ?? 0, 2); ?></div>
-          </div>
-        </div>
+        <button class="settings-btn" onclick="openSettingsModal()">
+          <i class="fas fa-cog"></i>
+        </button>
       </div>
     </div>
 
@@ -228,66 +145,199 @@ $events = $conn->query($events_query);
       </div>
     </div>
 
-    <!-- Upcoming Events -->
-    <?php if ($events->num_rows > 0): ?>
-    <div class="card events-card">
-      <div class="card-header">
-        <span>Upcoming Events</span>
-      </div>
-      <div class="card-content">
-        <div class="events-list">
-          <?php while ($event = $events->fetch_assoc()): ?>
-            <div class="event-item">
-              <div class="event-date">
-                <div class="month"><?php echo date('M', strtotime($event['event_date'])); ?></div>
-                <div class="day"><?php echo date('d', strtotime($event['event_date'])); ?></div>
-              </div>
-              <div class="event-info">
-                <h4><?php echo htmlspecialchars($event['event_name']); ?></h4>
-                <p><?php echo htmlspecialchars($event['event_description']); ?></p>
-                <div class="event-meta">
-                  <?php if ($event['event_time']): ?>
-                    <span>Time: <?php echo date('g:i A', strtotime($event['event_time'])); ?></span>
-                  <?php endif; ?>
-                  <?php if ($event['location']): ?>
-                    <span>Location: <?php echo htmlspecialchars($event['location']); ?></span>
-                  <?php endif; ?>
+    <div class="home-grid">
+      <!-- Upcoming Events -->
+      <?php if ($events->num_rows > 0): ?>
+      <div class="card events-card">
+        <div class="card-header">
+          <span>Upcoming Events</span>
+        </div>
+        <div class="card-content">
+          <div class="events-list">
+            <?php while ($event = $events->fetch_assoc()): ?>
+              <div class="event-item">
+                <div class="event-date">
+                  <div class="month"><?php echo date('M', strtotime($event['event_date'])); ?></div>
+                  <div class="day"><?php echo date('d', strtotime($event['event_date'])); ?></div>
+                </div>
+                <div class="event-info">
+                  <h4><?php echo htmlspecialchars($event['event_name']); ?></h4>
+                  <p><?php echo htmlspecialchars($event['event_description']); ?></p>
+                  <div class="event-meta">
+                    <?php if ($event['event_time']): ?>
+                      <span>Time: <?php echo date('g:i A', strtotime($event['event_time'])); ?></span>
+                    <?php endif; ?>
+                    <?php if ($event['location']): ?>
+                      <span>Location: <?php echo htmlspecialchars($event['location']); ?></span>
+                    <?php endif; ?>
+                  </div>
                 </div>
               </div>
+            <?php endwhile; ?>
+          </div>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <!-- Payment Due Card -->
+      <?php if ($unpaid_due): ?>
+      <div class="card payment-due-card">
+        <div class="card-header">
+          <span>Payment Due</span>
+        </div>
+        <div class="card-content">
+          <div class="payment-due-info">
+            <h3><?php echo htmlspecialchars($unpaid_due['due_month'] . ' ' . $unpaid_due['due_year']); ?> Payment Due</h3>
+            <div class="amount-display">
+              <span class="label">Amount:</span>
+              <span class="amount">₱<?php echo number_format($unpaid_due['amount'], 2); ?></span>
             </div>
-          <?php endwhile; ?>
+            <div class="due-date-display">
+              <span class="label">Due by:</span>
+              <span class="due-date"><?php echo date('F d, Y', strtotime($unpaid_due['due_date'])); ?></span>
+            </div>
+            <div class="warning-message">
+              Please settle to avoid late fees
+            </div>
+          </div>
+          <div class="payment-actions">
+            <button class="pay-now-btn">
+              Pay Now
+            </button>
+            <button class="payment-history-link" onclick="openLedgerModal()">
+              Payment History
+            </button>
+          </div>
+        </div>
+      </div>
+      <?php else: ?>
+      <div class="card payment-due-card all-paid">
+        <div class="card-header">
+          <span>Payment Status</span>
+        </div>
+        <div class="card-content">
+          <div class="all-paid-message">
+            <h3>All Payments Up to Date!</h3>
+            <p>Thank you for your prompt payment</p>
+          </div>
+          <button class="payment-history-link" onclick="openLedgerModal()">
+            View Payment History
+          </button>
+        </div>
+      </div>
+      <?php endif; ?>
+    </div>
+
+    <!-- Payment Ledger Summary -->
+    <div class="card ledger-summary-card">
+      <div class="card-header">
+        <span>Payment Ledger Summary</span>
+        <a href="account.php" class="view-all-link">View Full Ledger</a>
+      </div>
+      <div class="card-content">
+        <div class="ledger-stats">
+          <div class="stat-item">
+            <div class="stat-label">Total Paid (<?php echo $year; ?>)</div>
+            <div class="stat-value paid">₱<?php echo number_format($paid_summary['total_paid'] ?? 0, 2); ?></div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Outstanding</div>
+            <div class="stat-value outstanding">₱<?php echo number_format($outstanding_summary['total_outstanding'] ?? 0, 2); ?></div>
+          </div>
         </div>
       </div>
     </div>
-    <?php endif; ?>
 
   </main>
 
-  <script>
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
-    const menuBtn = document.querySelector('.menu-btn');
+  <!-- Notification Settings Modal -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Notification Settings</h2>
+        <span class="close" onclick="closeSettingsModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="notification-settings-card">
+          <div class="notification-option">
+            <div class="notification-info">
+              <h3>Email Notifications</h3>
+              <p>Receive important updates and announcements via email</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="email_notifications">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="notification-option">
+            <div class="notification-info">
+              <h3>SMS Notifications</h3>
+              <p>Get urgent alerts and payment reminders via SMS</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="sms_notifications">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="save-btn" onclick="saveNotificationSettings()">Save Settings</button>
+      </div>
+    </div>
+  </div>
 
-    function toggleMenu() {
-      sidebar.classList.toggle('open');
-      overlay.classList.toggle('show');
-      menuBtn.style.opacity = sidebar.classList.contains('open') ? '0' : '1';
-    }
+  <!-- Payment Ledger Modal -->
+  <div id="ledgerModal" class="modal">
+    <div class="modal-content ledger-modal-content">
+      <div class="modal-header">
+        <h2>Payment Ledger</h2>
+        <span class="close" onclick="closeLedgerModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="ledger-summary">
+          <div class="summary-item">
+            <span class="label">Total Paid (<?php echo $year; ?>)</span>
+            <span class="value">$<?php echo number_format($paid_summary['total_paid'] ?? 0, 2); ?></span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Outstanding</span>
+            <span class="value text-warning">$<?php echo number_format($outstanding_summary['total_outstanding'] ?? 0, 2); ?></span>
+          </div>
+        </div>
+        <table class="ledger-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php while ($row = $ledger->fetch_assoc()): ?>
+            <tr>
+              <td><?php echo $row['due_month'] . ' ' . $row['due_year']; ?></td>
+              <td>Monthly Dues</td>
+              <td>$<?php echo number_format($row['amount'], 2); ?></td>
+              <td>
+                <?php if ($row['status'] == 'paid'): ?>
+                  <span class="badge badge-success">Paid</span>
+                <?php elseif ($row['status'] == 'overdue'): ?>
+                  <span class="badge badge-danger">Overdue</span>
+                <?php else: ?>
+                  <span class="badge badge-warning">Unpaid</span>
+                <?php endif; ?>
+              </td>
+            </tr>
+            <?php endwhile; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
-    function closeMenu() {
-      sidebar.classList.remove('open');
-      overlay.classList.remove('show');
-      menuBtn.style.opacity = '1';
-    }
 
-    // Save notification settings
-    document.querySelectorAll('.toggle input').forEach(toggle => {
-      toggle.addEventListener('change', function() {
-        // TODO: Save to database via AJAX
-        console.log(this.id + ' changed to: ' + this.checked);
-      });
-    });
-  </script>
 </body>
 </html>
 <?php $conn->close(); ?>

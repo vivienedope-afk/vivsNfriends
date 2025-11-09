@@ -213,3 +213,19 @@ VALUES
 
 -- Update dues status for paid record
 UPDATE monthly_dues SET status = 'paid' WHERE dues_id = 2;
+
+-- Notification Preferences Table
+CREATE TABLE notification_preferences (
+    preference_id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    email_notifications BOOLEAN DEFAULT TRUE,
+    sms_notifications BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_preferences (user_id)
+);
+
+-- Insert default preferences for existing users
+INSERT INTO notification_preferences (user_id, email_notifications, sms_notifications)
+SELECT user_id, TRUE, FALSE FROM users WHERE user_role = 'resident';

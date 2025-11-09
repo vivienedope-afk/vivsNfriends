@@ -98,6 +98,10 @@
 }
 
 /* Payment Due Card */
+.payment-due-card {
+  margin-top: 20px;
+}
+
 .payment-due-card .card-content {
   padding: 25px;
 }
@@ -453,6 +457,212 @@
   font-size: 14px;
 }
 
+/* Page Header Styles */
+.page-header {
+  margin-bottom: 25px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.settings-btn {
+  background: linear-gradient(135deg, #c17f59, #8b572a);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(193, 127, 89, 0.3);
+}
+
+.settings-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(193, 127, 89, 0.4);
+}
+
+.settings-btn i {
+  font-size: 16px;
+}
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 5% auto;
+  padding: 0;
+  border: 1px solid #888;
+  width: 90%;
+  max-width: 500px;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+.ledger-modal-content {
+  max-width: 800px;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #c17f59, #8b572a);
+  color: white;
+  padding: 20px 25px;
+  border-radius: 10px 10px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.modal-header .close {
+  color: white;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.modal-header .close:hover {
+  color: #f0f0f0;
+}
+
+.modal-body {
+  padding: 25px;
+}
+
+.modal-footer {
+  padding: 15px 25px 25px;
+  text-align: right;
+  border-top: 1px solid #f0f0f0;
+}
+
+.save-btn {
+  background: linear-gradient(135deg, #d4a574, #c17f59);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.save-btn:hover {
+  background: linear-gradient(135deg, #c17f59, #8b572a);
+  transform: translateY(-1px);
+}
+
+/* Ledger Modal Styles */
+.ledger-summary {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.summary-item {
+  text-align: center;
+}
+
+.summary-item .label {
+  font-size: 14px;
+  color: #7f8c8d;
+  margin-bottom: 5px;
+}
+
+.summary-item .value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.summary-item .value.text-warning {
+  color: #e74c3c;
+}
+
+.ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.ledger-table th,
+.ledger-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ledger-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.ledger-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.badge-danger {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.badge-warning {
+  background: #fff3cd;
+  color: #856404;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .home-grid {
@@ -474,5 +684,19 @@
 
   .event-date {
     margin: 0 auto;
+  }
+
+  .header-content {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .settings-btn {
+    align-self: flex-end;
+  }
+
+  .modal-content {
+    margin: 10% auto;
+    width: 95%;
   }
 }

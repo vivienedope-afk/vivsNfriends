@@ -110,9 +110,6 @@ while ($maint = $maintenance_result->fetch_assoc()) {
     <button class="close-btn" onclick="toggleMenu()">
       ✕
     </button>
-    <button class="back-button" onclick="window.location.href='home.php'">
-      ←
-    </button>
     <img src="pics/Courtyard.png" alt="Courtyard Logo" class="logo">
     <div class="user-info-sidebar">
       <p class="user-name"><?php echo htmlspecialchars($current_user['full_name']); ?></p>
@@ -193,6 +190,11 @@ while ($maint = $maintenance_result->fetch_assoc()) {
                 }
             }
 
+            // Add reserve amenity indicator for today and future dates
+            if ($current_date >= date('Y-m-d')) {
+                echo '<div class="reserve-amenity" onclick="openReservationModalForDate(\'' . $current_date . '\')">Reserve Amenity</div>';
+            }
+
             echo '</div>';
         }
 
@@ -240,6 +242,45 @@ while ($maint = $maintenance_result->fetch_assoc()) {
       <div id="modal-body">
         <!-- Content will be loaded here -->
       </div>
+    </div>
+  </div>
+
+  <!-- Reservation Modal -->
+  <div id="reservationModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeReservationModal()">&times;</span>
+      <h2>Reserve Amenity for <span id="reservationDate"></span></h2>
+      <form id="reservationForm">
+        <input type="hidden" id="facility" name="facility">
+        <div class="form-group">
+          <label for="facility_select">Amenity:</label>
+          <select id="facility_select" name="facility" required>
+            <option value="">Select Amenity</option>
+            <option value="Clubhouse">Clubhouse</option>
+            <option value="Basketball Court">Basketball Court</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="purpose">Purpose:</label>
+          <select id="purpose" name="purpose" required>
+            <option value="">Select Purpose</option>
+            <!-- Options will be populated based on facility -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="booking_date">Date:</label>
+          <input type="date" id="booking_date" name="booking_date" required readonly>
+        </div>
+        <div class="form-group">
+          <label for="start_time">Start Time:</label>
+          <input type="time" id="start_time" name="start_time" required>
+        </div>
+        <div class="form-group">
+          <label for="end_time">End Time:</label>
+          <input type="time" id="end_time" name="end_time" required>
+        </div>
+        <button type="submit" class="btn-submit">Submit Reservation</button>
+      </form>
     </div>
   </div>
 
@@ -326,6 +367,90 @@ while ($maint = $maintenance_result->fetch_assoc()) {
     window.onclick = function(event) {
       if (event.target == modal) {
         modal.style.display = 'none';
+      }
+    }
+
+    // Reservation modal functionality
+    function openReservationModalForDate(date) {
+      const modal = document.getElementById('reservationModal');
+      const reservationDateSpan = document.getElementById('reservationDate');
+      const bookingDateInput = document.getElementById('booking_date');
+      const facilitySelect = document.getElementById('facility_select');
+      const purposeSelect = document.getElementById('purpose');
+
+      reservationDateSpan.textContent = new Date(date).toLocaleDateString();
+      bookingDateInput.value = date;
+      facilitySelect.value = '';
+      purposeSelect.innerHTML = '<option value="">Select Purpose</option>';
+
+      modal.style.display = 'block';
+    }
+
+    function closeReservationModal() {
+      const modal = document.getElementById('reservationModal');
+      modal.style.display = 'none';
+      // Reset form
+      document.getElementById('reservationForm').reset();
+    }
+
+    // Populate purpose options based on selected facility
+    document.getElementById('facility_select').addEventListener('change', function() {
+      const facility = this.value;
+      const purposeSelect = document.getElementById('purpose');
+      purposeSelect.innerHTML = '<option value="">Select Purpose</option>';
+
+      if (facility === 'Clubhouse') {
+        purposeSelect.innerHTML += `
+          <option value="Birthday Party">Birthday Party</option>
+          <option value="Dance Practice">Dance Practice</option>
+          <option value="Wedding Reception">Wedding Reception</option>
+          <option value="Community Meeting">Community Meeting</option>
+          <option value="Other">Other</option>
+        `;
+      } else if (facility === 'Basketball Court') {
+        purposeSelect.innerHTML += `
+          <option value="General Reservation">General Reservation</option>
+          <option value="Tournament">Tournament</option>
+          <option value="Practice">Practice</option>
+          <option value="Other">Other</option>
+        `;
+      }
+    });
+
+    // Handle reservation form submission
+    document.getElementById('reservationForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const formData = new FormData(this);
+
+      fetch('process_reservation.php', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('Reservation submitted successfully!');
+          closeReservationModal();
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while submitting the reservation.');
+      });
+    });
+
+    // Close reservation modal when clicking outside
+    window.onclick = function(event) {
+      const maintenanceModal = document.getElementById('maintenance-modal');
+      const reservationModal = document.getElementById('reservationModal');
+      if (event.target == maintenanceModal) {
+        maintenanceModal.style.display = 'none';
+      }
+      if (event.target == reservationModal) {
+        closeReservationModal();
       }
     }
   </script>
