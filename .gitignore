@@ -26,6 +26,9 @@ cache/
 # Uploaded Files (if applicable)
 uploads/*
 !uploads/.gitkeep
+!uploads/resident_ids/
+uploads/resident_ids/*
+!uploads/resident_ids/.gitkeep
 
 # Backup Files
 *.bak

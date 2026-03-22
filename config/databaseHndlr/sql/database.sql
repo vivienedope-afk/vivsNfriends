@@ -204,20 +204,15 @@ INSERT INTO monthly_dues (household_id, due_month, due_year, amount, due_date, s
 VALUES
 (1, 'November', 2025, 150.00, '2025-11-10', 'unpaid'),
 (1, 'October', 2025, 150.00, '2025-10-10', 'paid'),
-(2, 'November', 2025, 150.00, '2025-11-10', 'unpaid'),
-(1, 'March', 2026, 150.00, '2026-03-10', 'unpaid'),
-(2, 'March', 2026, 150.00, '2026-03-10', 'overdue'),
-(1, 'February', 2026, 150.00, '2026-02-10', 'paid'),
-(2, 'February', 2026, 150.00, '2026-02-10', 'overdue');
+(2, 'November', 2025, 150.00, '2025-11-10', 'unpaid');
 
 -- Sample payment
 INSERT INTO payments (dues_id, household_id, payment_date, amount_paid, payment_method, reference_number, verified_by, verified_at)
 VALUES
-(2, 1, '2025-10-08', 150.00, 'gcash', 'GC12345678', 1, '2025-10-08 14:30:00'),
-(6, 1, '2026-02-08', 150.00, 'bank_transfer', 'BT987654321', 1, '2026-02-08 10:15:00');
+(2, 1, '2025-10-08', 150.00, 'gcash', 'GC12345678', 1, '2025-10-08 14:30:00');
 
--- Update dues status for paid records
-UPDATE monthly_dues SET status = 'paid' WHERE dues_id IN (2, 6);
+-- Update dues status for paid record
+UPDATE monthly_dues SET status = 'paid' WHERE dues_id = 2;
 
 -- Notification Preferences Table
 CREATE TABLE notification_preferences (

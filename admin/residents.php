@@ -14,6 +14,9 @@ $residents_query = "SELECT u.*, h.unit_number, h.lot_number, h.block_number, h.r
                     WHERE u.user_role = 'resident'
                     ORDER BY u.created_at DESC";
 $residents = $conn->query($residents_query);
+if (!$residents) {
+    $residents = false;
+}
 
 // Generate next account number
 function generateAccountNumber($conn) {
@@ -21,7 +24,7 @@ function generateAccountNumber($conn) {
     $query = "SELECT account_number FROM users WHERE account_number LIKE 'MAIA-$year-%' ORDER BY account_number DESC LIMIT 1";
     $result = $conn->query($query);
     
-    if ($result->num_rows > 0) {
+    if ($result && $result->num_rows > 0) {
         $last_acc = $result->fetch_assoc()['account_number'];
         $last_num = intval(substr($last_acc, -3));
         $next_num = str_pad($last_num + 1, 3, '0', STR_PAD_LEFT);
@@ -222,6 +225,7 @@ $next_account_number = generateAccountNumber($conn);
     <ul class="nav-links">
       <li><a href="dashboard.php" onclick="closeMenu()"><span class="text">Dashboard</span></a></li>
       <li class="active"><a href="residents.php" onclick="closeMenu()"><span class="text">Residents</span></a></li>
+      <li><a href="applications.php" onclick="closeMenu()"><span class="text">Applications</span></a></li>
       <li><a href="payments.php" onclick="closeMenu()"><span class="text">Payments & Dues</span></a></li>
       <li><a href="bookings.php" onclick="closeMenu()"><span class="text">Facility Bookings</span></a></li>
       <li><a href="announcements.php" onclick="closeMenu()"><span class="text">Announcements</span></a></li>
@@ -258,7 +262,7 @@ $next_account_number = generateAccountNumber($conn);
 
     <div class="card residents-table">
       <div class="card-header">
-        <h2>All Residents (<?php echo $residents->num_rows; ?>)</h2>
+        <h2>All Residents (<?php echo $residents ? $residents->num_rows : 0; ?>)</h2>
       </div>
       <div class="card-content">
         <table class="data-table">
@@ -274,7 +278,7 @@ $next_account_number = generateAccountNumber($conn);
             </tr>
           </thead>
           <tbody>
-            <?php while ($resident = $residents->fetch_assoc()): ?>
+            <?php if ($residents): while ($resident = $residents->fetch_assoc()): ?>
               <tr>
                 <td><strong><?php echo htmlspecialchars($resident['account_number']); ?></strong></td>
                 <td><?php echo htmlspecialchars($resident['first_name'] . ' ' . $resident['last_name']); ?></td>
@@ -291,7 +295,11 @@ $next_account_number = generateAccountNumber($conn);
                   </button>
                 </td>
               </tr>
-            <?php endwhile; ?>
+            <?php endwhile; else: ?>
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 20px; color: #666;">No residents found. Database tables may not be imported yet.</td>
+              </tr>
+            <?php endif; ?>
           </tbody>
         </table>
       </div>

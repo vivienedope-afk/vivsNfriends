@@ -181,6 +181,39 @@ body {
   transform: translateY(0);
 }
 
+.apply-account-section {
+  padding: 20px 30px;
+  text-align: center;
+  border-top: 1px solid #e0e0e0;
+  background: #fefefe;
+}
+
+.apply-text {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.apply-btn {
+  display: inline-block;
+  padding: 12px 30px;
+  background: white;
+  color: #79491b;
+  border: 2px solid #d4a574;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.apply-btn:hover {
+  background: linear-gradient(135deg, #fedea3 0%, #f5d18a 100%);
+  border-color: #c17f59;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(193, 127, 89, 0.2);
+}
+
 .login-footer {
   background: #f8f9fa;
   padding: 20px 30px;

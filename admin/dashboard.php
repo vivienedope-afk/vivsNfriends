@@ -6,22 +6,41 @@ requireAdmin();
 $conn = getDBConnection();
 $current_user = getCurrentUser();
 
-// Get statistics
+// Get statistics with error handling
+$total_households = 0;
+$total_residents = 0;
+$unpaid_count = 0;
+$unpaid_amount = 0;
+$paid_count = 0;
+$paid_amount = 0;
+
 $total_households_query = "SELECT COUNT(*) as total FROM households WHERE status = 'occupied'";
-$total_households = $conn->query($total_households_query)->fetch_assoc()['total'];
+$result = $conn->query($total_households_query);
+if ($result) {
+    $total_households = $result->fetch_assoc()['total'];
+}
 
 $total_residents_query = "SELECT COUNT(*) as total FROM users WHERE user_role = 'resident' AND status = 'active'";
-$total_residents = $conn->query($total_residents_query)->fetch_assoc()['total'];
+$result = $conn->query($total_residents_query);
+if ($result) {
+    $total_residents = $result->fetch_assoc()['total'];
+}
 
 $unpaid_dues_query = "SELECT COUNT(*) as total, SUM(amount) as total_amount FROM monthly_dues WHERE status = 'unpaid'";
-$unpaid_dues_result = $conn->query($unpaid_dues_query)->fetch_assoc();
-$unpaid_count = $unpaid_dues_result['total'];
-$unpaid_amount = $unpaid_dues_result['total_amount'] ?? 0;
+$result = $conn->query($unpaid_dues_query);
+if ($result) {
+    $unpaid_dues_result = $result->fetch_assoc();
+    $unpaid_count = $unpaid_dues_result['total'];
+    $unpaid_amount = $unpaid_dues_result['total_amount'] ?? 0;
+}
 
 $paid_this_month_query = "SELECT COUNT(*) as total, SUM(amount_paid) as total_amount FROM payments WHERE MONTH(payment_date) = MONTH(CURRENT_DATE()) AND YEAR(payment_date) = YEAR(CURRENT_DATE())";
-$paid_this_month_result = $conn->query($paid_this_month_query)->fetch_assoc();
-$paid_count = $paid_this_month_result['total'];
-$paid_amount = $paid_this_month_result['total_amount'] ?? 0;
+$result = $conn->query($paid_this_month_query);
+if ($result) {
+    $paid_this_month_result = $result->fetch_assoc();
+    $paid_count = $paid_this_month_result['total'];
+    $paid_amount = $paid_this_month_result['total_amount'] ?? 0;
+}
 
 // Get recent payments
 $recent_payments_query = "SELECT p.*, h.unit_number, CONCAT(u.first_name, ' ', u.last_name) as payer_name, md.due_month, md.due_year
@@ -33,6 +52,9 @@ $recent_payments_query = "SELECT p.*, h.unit_number, CONCAT(u.first_name, ' ', u
                           ORDER BY p.created_at DESC
                           LIMIT 10";
 $recent_payments = $conn->query($recent_payments_query);
+if (!$recent_payments) {
+    $recent_payments = false;
+}
 
 // Get pending facility bookings
 $pending_bookings_query = "SELECT fb.*, h.unit_number, CONCAT(u.first_name, ' ', u.last_name) as requester_name
@@ -44,6 +66,9 @@ $pending_bookings_query = "SELECT fb.*, h.unit_number, CONCAT(u.first_name, ' ',
                            ORDER BY fb.created_at DESC
                            LIMIT 5";
 $pending_bookings = $conn->query($pending_bookings_query);
+if (!$pending_bookings) {
+    $pending_bookings = false;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -55,7 +80,7 @@ $pending_bookings = $conn->query($pending_bookings_query);
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="../css/admin.css">
   <link rel="icon" type="image/png" href="../pics/Courtyard.png">
 </head>
 <body>
@@ -71,6 +96,7 @@ $pending_bookings = $conn->query($pending_bookings_query);
     <ul class="nav-links">
       <li class="active"><a href="dashboard.php" onclick="closeMenu()"><span class="text">Dashboard</span></a></li>
       <li><a href="residents.php" onclick="closeMenu()"><span class="text">Residents</span></a></li>
+      <li><a href="applications.php" onclick="closeMenu()"><span class="text">Applications</span></a></li>
       <li><a href="payments.php" onclick="closeMenu()"><span class="text">Payments & Dues</span></a></li>
       <li><a href="bookings.php" onclick="closeMenu()"><span class="text">Facility Bookings</span></a></li>
       <li><a href="announcements.php" onclick="closeMenu()"><span class="text">Announcements</span></a></li>
@@ -89,6 +115,7 @@ $pending_bookings = $conn->query($pending_bookings_query);
 
     <section class="stats-grid">
       <div class="stat-card blue">
+        <div class="stat-icon">🏘️</div>
         <div class="stat-info">
           <h3><?php echo $total_households; ?></h3>
           <p>Total Households</p>
@@ -96,6 +123,7 @@ $pending_bookings = $conn->query($pending_bookings_query);
       </div>
 
       <div class="stat-card green">
+        <div class="stat-icon">👥</div>
         <div class="stat-info">
           <h3><?php echo $total_residents; ?></h3>
           <p>Active Residents</p>
@@ -103,6 +131,7 @@ $pending_bookings = $conn->query($pending_bookings_query);
       </div>
 
       <div class="stat-card red">
+        <div class="stat-icon">⚠️</div>
         <div class="stat-info">
           <h3><?php echo $unpaid_count; ?></h3>
           <p>Unpaid Dues</p>
@@ -111,6 +140,7 @@ $pending_bookings = $conn->query($pending_bookings_query);
       </div>
 
       <div class="stat-card purple">
+        <div class="stat-icon">💰</div>
         <div class="stat-info">
           <h3>₱<?php echo number_format($paid_amount, 2); ?></h3>
           <p>Collected This Month</p>
@@ -123,10 +153,10 @@ $pending_bookings = $conn->query($pending_bookings_query);
       <div class="card">
         <div class="card-header">
           <h2>Recent Payments</h2>
-          <a href="payments.php" class="view-all-link">View All</a>
+          <a href="payments.php" class="view-all-link">View All →</a>
         </div>
         <div class="card-content">
-          <?php if ($recent_payments->num_rows > 0): ?>
+          <?php if ($recent_payments && $recent_payments->num_rows > 0): ?>
             <table class="data-table">
               <thead>
                 <tr>
@@ -142,10 +172,10 @@ $pending_bookings = $conn->query($pending_bookings_query);
                 <?php while ($payment = $recent_payments->fetch_assoc()): ?>
                   <tr>
                     <td><?php echo date('M d, Y', strtotime($payment['payment_date'])); ?></td>
-                    <td><?php echo htmlspecialchars($payment['unit_number']); ?></td>
+                    <td><strong><?php echo htmlspecialchars($payment['unit_number']); ?></strong></td>
                     <td><?php echo htmlspecialchars($payment['payer_name']); ?></td>
                     <td><?php echo $payment['due_month'] . ' ' . $payment['due_year']; ?></td>
-                    <td>₱<?php echo number_format($payment['amount_paid'], 2); ?></td>
+                    <td><strong>₱<?php echo number_format($payment['amount_paid'], 2); ?></strong></td>
                     <td>
                       <?php if ($payment['verified_by']): ?>
                         <span class="badge badge-success">Verified</span>
@@ -158,7 +188,7 @@ $pending_bookings = $conn->query($pending_bookings_query);
               </tbody>
             </table>
           <?php else: ?>
-            <p class="no-data">No recent payments</p>
+            <p class="no-data">No recent payments recorded</p>
           <?php endif; ?>
         </div>
       </div>
@@ -166,16 +196,16 @@ $pending_bookings = $conn->query($pending_bookings_query);
       <div class="card">
         <div class="card-header">
           <h2>Pending Bookings</h2>
-          <a href="bookings.php" class="view-all-link">View All</a>
+          <a href="bookings.php" class="view-all-link">View All →</a>
         </div>
         <div class="card-content">
-          <?php if ($pending_bookings->num_rows > 0): ?>
+          <?php if ($pending_bookings && $pending_bookings->num_rows > 0): ?>
             <div class="bookings-list">
               <?php while ($booking = $pending_bookings->fetch_assoc()): ?>
                 <div class="booking-item">
                   <div class="booking-info">
                     <h4><?php echo htmlspecialchars($booking['facility_name']); ?></h4>
-                    <p><strong><?php echo htmlspecialchars($booking['unit_number']); ?></strong> - <?php echo htmlspecialchars($booking['requester_name']); ?></p>
+                    <p><strong><?php echo htmlspecialchars($booking['unit_number']); ?></strong> • <?php echo htmlspecialchars($booking['requester_name']); ?></p>
                     <p class="booking-date">
                       <?php echo date('M d, Y', strtotime($booking['booking_date'])); ?> 
                       (<?php echo date('g:i A', strtotime($booking['start_time'])); ?> - <?php echo date('g:i A', strtotime($booking['end_time'])); ?>)
@@ -189,27 +219,35 @@ $pending_bookings = $conn->query($pending_bookings_query);
               <?php endwhile; ?>
             </div>
           <?php else: ?>
-            <p class="no-data">No pending bookings</p>
+            <p class="no-data">No pending bookings at this time</p>
           <?php endif; ?>
         </div>
       </div>
-    </div>
 
-    <div class="quick-actions">
-      <h2>Quick Actions</h2>
-      <div class="actions-grid">
-        <a href="announcements.php?action=new" class="action-btn">
-          <span>Post Announcement</span>
-        </a>
-        <a href="payments.php?action=record" class="action-btn">
-          <span>Record Payment</span>
-        </a>
-        <a href="residents.php?action=add" class="action-btn">
-          <span>Add Resident</span>
-        </a>
-        <a href="reports.php" class="action-btn">
-          <span>Generate Report</span>
-        </a>
+      <div class="card quick-actions-card">
+        <div class="card-header">
+          <h2>Quick Actions</h2>
+        </div>
+        <div class="card-content">
+          <div class="actions-grid">
+            <a href="announcements.php?action=new" class="action-btn blue-action">
+              <span class="action-icon">📢</span>
+              <span class="action-text">Post Announcement</span>
+            </a>
+            <a href="payments.php?action=record" class="action-btn green-action">
+              <span class="action-icon">💳</span>
+              <span class="action-text">Record Payment</span>
+            </a>
+            <a href="residents.php?action=add" class="action-btn orange-action">
+              <span class="action-icon">➕</span>
+              <span class="action-text">Add Resident</span>
+            </a>
+            <a href="reports.php" class="action-btn purple-action">
+              <span class="action-icon">📊</span>
+              <span class="action-text">Generate Report</span>
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   </main>

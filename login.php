@@ -63,8 +63,13 @@
         <button type="submit" class="login-btn">Login</button>
       </form>
 
+      <div class="apply-account-section">
+        <p class="apply-text">New resident? Apply for an account</p>
+        <a href="apply_account.php" class="apply-btn">Apply for Account</a>
+      </div>
+
       <div class="login-footer">
-        <p>Don't have an account? Contact the Treasurer's Office</p>
+        <p>Need help? Contact the Treasurer's Office</p>
         <p class="demo-text">Demo Accounts:<br>
           Admin: <strong>ADMIN001</strong> | Resident: <strong>MAIA-2025-001</strong><br>
           Password: <strong>admin123</strong></p>
