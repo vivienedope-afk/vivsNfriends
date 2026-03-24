@@ -229,6 +229,7 @@ $next_account_number = generateAccountNumber($conn);
       <li><a href="payments.php" onclick="closeMenu()"><span class="text">Payments & Dues</span></a></li>
       <li><a href="bookings.php" onclick="closeMenu()"><span class="text">Facility Bookings</span></a></li>
       <li><a href="announcements.php" onclick="closeMenu()"><span class="text">Announcements</span></a></li>
+      <li><a href="events.php" onclick="closeMenu()"><span class="text">Events</span></a></li>
       <li><a href="reports.php" onclick="closeMenu()"><span class="text">Reports</span></a></li>
       <li><a href="../auth/logout.php" onclick="closeMenu()"><span class="text">Logout</span></a></li>
     </ul>
@@ -246,7 +247,9 @@ $next_account_number = generateAccountNumber($conn);
       <div class="alert alert-success">
         <?php 
           if ($_GET['success'] == 'added') echo 'Resident account created successfully!';
-          elseif ($_GET['success'] == 'updated') echo 'Resident information updated successfully!';
+           elseif ($_GET['success'] == 'updated') echo 'Resident information updated successfully!';
+           elseif ($_GET['success'] == 'archived') echo 'Resident account archived successfully.';
+           elseif ($_GET['success'] == 'deleted') echo 'Resident account deleted successfully.';
         ?>
       </div>
     <?php endif; ?>
@@ -256,6 +259,7 @@ $next_account_number = generateAccountNumber($conn);
         <?php 
           if ($_GET['error'] == 'exists') echo 'Account number or email already exists!';
           elseif ($_GET['error'] == 'failed') echo 'Failed to create account. Please try again.';
+           elseif ($_GET['error'] == 'has_records') echo 'Cannot delete resident with existing dues or booking records. Use Archive instead.';
         ?>
       </div>
     <?php endif; ?>
@@ -293,6 +297,8 @@ $next_account_number = generateAccountNumber($conn);
                   <button class="btn-deactivate" onclick="toggleStatus(<?php echo $resident['user_id']; ?>, '<?php echo $resident['status']; ?>')">
                     <?php echo $resident['status'] == 'active' ? 'Deactivate' : 'Activate'; ?>
                   </button>
+                   <button class="btn-deactivate" onclick="archiveResident(<?php echo $resident['user_id']; ?>)">Archive</button>
+                   <button class="btn-deactivate" style="background:#dc3545;" onclick="deleteResident(<?php echo $resident['user_id']; ?>)">Delete</button>
                 </td>
               </tr>
             <?php endwhile; else: ?>
@@ -407,7 +413,7 @@ $next_account_number = generateAccountNumber($conn);
     }
 
     function editResident(userId) {
-      alert('Edit functionality coming soon for user ID: ' + userId);
+      window.location.href = 'edit_resident.php?user_id=' + userId;
     }
 
     function toggleStatus(userId, currentStatus) {
@@ -416,6 +422,18 @@ $next_account_number = generateAccountNumber($conn);
         window.location.href = 'residents_action.php?action=toggle_status&user_id=' + userId + '&status=' + currentStatus;
       }
     }
+
+      function archiveResident(userId) {
+        if (confirm('Archive this resident account? This will set status to inactive.')) {
+          window.location.href = 'residents_action.php?action=archive&user_id=' + userId;
+        }
+      }
+
+      function deleteResident(userId) {
+        if (confirm('Delete this resident permanently? This only works when no dues and booking records exist.')) {
+          window.location.href = 'residents_action.php?action=delete&user_id=' + userId;
+        }
+      }
   </script>
 </body>
 </html>

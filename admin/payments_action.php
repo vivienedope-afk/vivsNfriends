@@ -67,10 +67,10 @@ switch ($action) {
         
         try {
             // Insert payment record
-            $insert_payment = "INSERT INTO payments (dues_id, household_id, payment_date, amount_paid, payment_method, reference_number, remarks, verified_by, verified_at) 
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $insert_payment = "INSERT INTO payments (dues_id, household_id, payment_date, amount_paid, payment_method, reference_number, remarks) 
+                              VALUES (?, ?, ?, ?, ?, ?, ?)";
             $stmt = $conn->prepare($insert_payment);
-            $stmt->bind_param("iidssssi", $dues_id, $household_id, $payment_date, $amount_paid, $payment_method, $reference_number, $remarks, $current_user['user_id']);
+            $stmt->bind_param("iidssss", $dues_id, $household_id, $payment_date, $amount_paid, $payment_method, $reference_number, $remarks);
             $stmt->execute();
             
             // Update dues status to paid
@@ -86,6 +86,32 @@ switch ($action) {
             header("Location: payments.php?error=payment_failed");
         }
         break;
+
+    case 'edit_dues':
+        $dues_id = (int)($_POST['dues_id'] ?? 0);
+        $due_month = $_POST['due_month'] ?? '';
+        $due_year = (int)($_POST['due_year'] ?? 0);
+        $amount = (float)($_POST['amount'] ?? 0);
+        $due_date = $_POST['due_date'] ?? '';
+        $status = $_POST['status'] ?? 'unpaid';
+
+        if ($dues_id <= 0 || $due_month === '' || $due_year <= 0 || $amount < 0 || $due_date === '' || !in_array($status, ['unpaid', 'paid', 'overdue'], true)) {
+            header("Location: payments.php?error=invalid_edit");
+            exit();
+        }
+
+        $edit_query = "UPDATE monthly_dues
+                       SET due_month = ?, due_year = ?, amount = ?, due_date = ?, status = ?
+                       WHERE dues_id = ?";
+        $stmt = $conn->prepare($edit_query);
+        $stmt->bind_param("sidssi", $due_month, $due_year, $amount, $due_date, $status, $dues_id);
+
+        if ($stmt->execute()) {
+            header("Location: payments.php?success=dues_updated");
+        } else {
+            header("Location: payments.php?error=edit_failed");
+        }
+        break;
         
     case 'verify_payment':
         $payment_id = (int)$_GET['payment_id'];
@@ -98,6 +124,96 @@ switch ($action) {
             header("Location: payments.php?success=payment_verified");
         } else {
             header("Location: payments.php?error=verify_failed");
+        }
+        break;
+
+    case 'archive_payment':
+        $payment_id = (int)($_GET['payment_id'] ?? 0);
+        if ($payment_id <= 0) {
+            header("Location: payments.php?error=invalid_payment");
+            exit();
+        }
+
+        $archive_query = "UPDATE payments
+                          SET remarks = CONCAT('[ARCHIVED by admin on ', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '] ', COALESCE(remarks, ''))
+                          WHERE payment_id = ?";
+        $stmt = $conn->prepare($archive_query);
+        $stmt->bind_param("i", $payment_id);
+
+        if ($stmt->execute()) {
+            header("Location: payments.php?success=payment_archived");
+        } else {
+            header("Location: payments.php?error=archive_failed");
+        }
+        break;
+
+    case 'delete_payment':
+        $payment_id = (int)($_GET['payment_id'] ?? 0);
+        if ($payment_id <= 0) {
+            header("Location: payments.php?error=invalid_payment");
+            exit();
+        }
+
+        $fetch_query = "SELECT dues_id FROM payments WHERE payment_id = ? LIMIT 1";
+        $stmt = $conn->prepare($fetch_query);
+        $stmt->bind_param("i", $payment_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $payment = $result ? $result->fetch_assoc() : null;
+
+        if (!$payment) {
+            header("Location: payments.php?error=payment_not_found");
+            exit();
+        }
+
+        $dues_id = (int)$payment['dues_id'];
+        $conn->begin_transaction();
+
+        try {
+            $delete_query = "DELETE FROM payments WHERE payment_id = ?";
+            $stmt = $conn->prepare($delete_query);
+            $stmt->bind_param("i", $payment_id);
+            $stmt->execute();
+
+            $reset_dues_query = "UPDATE monthly_dues SET status = 'unpaid' WHERE dues_id = ?";
+            $stmt = $conn->prepare($reset_dues_query);
+            $stmt->bind_param("i", $dues_id);
+            $stmt->execute();
+
+            $conn->commit();
+            header("Location: payments.php?success=payment_deleted");
+        } catch (Exception $e) {
+            $conn->rollback();
+            header("Location: payments.php?error=delete_failed");
+        }
+        break;
+
+    case 'delete_dues':
+        $dues_id = (int)($_GET['dues_id'] ?? 0);
+        if ($dues_id <= 0) {
+            header("Location: payments.php?error=invalid_dues");
+            exit();
+        }
+
+        $payment_check_query = "SELECT COUNT(*) AS total FROM payments WHERE dues_id = ?";
+        $stmt = $conn->prepare($payment_check_query);
+        $stmt->bind_param("i", $dues_id);
+        $stmt->execute();
+        $payment_count = (int)($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+
+        if ($payment_count > 0) {
+            header("Location: payments.php?error=dues_has_payment");
+            exit();
+        }
+
+        $delete_dues_query = "DELETE FROM monthly_dues WHERE dues_id = ?";
+        $stmt = $conn->prepare($delete_dues_query);
+        $stmt->bind_param("i", $dues_id);
+
+        if ($stmt->execute()) {
+            header("Location: payments.php?success=dues_deleted");
+        } else {
+            header("Location: payments.php?error=delete_failed");
         }
         break;
         

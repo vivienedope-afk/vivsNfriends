@@ -70,6 +70,29 @@ while ($event = $events_result->fetch_assoc()) {
     }
     $upcoming_events[$date_key][] = $event;
 }
+$month_start_date = sprintf('%04d-%02d-01', $current_year, $current_month);
+$month_end_date = sprintf('%04d-%02d-%02d', $current_year, $current_month, $days_in_month);
+
+$bookings_query = "SELECT fb.booking_date, fb.start_time, fb.end_time, fb.facility_name,
+              h.unit_number, CONCAT(u.first_name, ' ', u.last_name) AS reserver_name
+           FROM facility_bookings fb
+           INNER JOIN households h ON fb.household_id = h.household_id
+           LEFT JOIN household_members hm ON h.household_id = hm.household_id AND hm.is_primary = 1
+           LEFT JOIN users u ON hm.user_id = u.user_id
+           WHERE fb.status = 'approved' AND fb.booking_date BETWEEN ? AND ?
+           ORDER BY fb.booking_date ASC, fb.start_time ASC";
+$stmt_bookings = $conn->prepare($bookings_query);
+$stmt_bookings->bind_param("ss", $month_start_date, $month_end_date);
+$stmt_bookings->execute();
+$bookings_result = $stmt_bookings->get_result();
+$approved_bookings = [];
+while ($booking = $bookings_result->fetch_assoc()) {
+  $date_key = $booking['booking_date'];
+  if (!isset($approved_bookings[$date_key])) {
+    $approved_bookings[$date_key] = [];
+  }
+  $approved_bookings[$date_key][] = $booking;
+}
 
 // Query pending maintenance requests for the user
 $maintenance_query = "SELECT mr.*, h.unit_number
@@ -188,6 +211,16 @@ while ($maint = $maintenance_result->fetch_assoc()) {
                 foreach ($upcoming_events[$current_date] as $event) {
                     echo '<div class="event-item">' . htmlspecialchars($event['event_name']) . '</div>';
                 }
+            }
+
+            if (isset($approved_bookings[$current_date])) {
+              foreach ($approved_bookings[$current_date] as $booking) {
+                echo '<div class="event-item" style="background:#d9f5df; color:#155724;">'
+                  . htmlspecialchars($booking['facility_name'])
+                  . ' ' . date('g:i A', strtotime($booking['start_time']))
+                  . '-' . date('g:i A', strtotime($booking['end_time']))
+                  . ' (' . htmlspecialchars($booking['unit_number']) . ' - ' . htmlspecialchars($booking['reserver_name'] ?? 'N/A') . ')</div>';
+              }
             }
 
             // Add reserve amenity indicator for today and future dates

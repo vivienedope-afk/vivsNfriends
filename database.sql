@@ -130,6 +130,30 @@ CREATE TABLE facility_bookings (
     FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
+-- Amenity Damage/Incident Reports Table
+CREATE TABLE amenity_damage_reports (
+    report_id INT PRIMARY KEY AUTO_INCREMENT,
+    booking_id INT NOT NULL,
+    household_id INT NOT NULL,
+    reported_by INT NOT NULL,
+    incident_date DATE NOT NULL,
+    incident_type VARCHAR(100) DEFAULT 'damage',
+    description TEXT NOT NULL,
+    estimated_cost DECIMAL(10,2) DEFAULT NULL,
+    status ENUM('reported', 'under_review', 'resolved') DEFAULT 'reported',
+    admin_notes TEXT,
+    resolved_by INT,
+    resolved_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (booking_id) REFERENCES facility_bookings(booking_id) ON DELETE CASCADE,
+    FOREIGN KEY (household_id) REFERENCES households(household_id) ON DELETE CASCADE,
+    FOREIGN KEY (reported_by) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (resolved_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_booking (booking_id),
+    INDEX idx_status (status),
+    INDEX idx_incident_date (incident_date)
+);
+
 -- Maintenance Requests/Concerns Table
 CREATE TABLE maintenance_requests (
     request_id INT PRIMARY KEY AUTO_INCREMENT,

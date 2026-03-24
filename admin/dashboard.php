@@ -69,6 +69,20 @@ $pending_bookings = $conn->query($pending_bookings_query);
 if (!$pending_bookings) {
     $pending_bookings = false;
 }
+
+$approved_schedule_query = "SELECT fb.booking_id, fb.facility_name, fb.booking_date, fb.start_time, fb.end_time,
+                   h.unit_number, CONCAT(u.first_name, ' ', u.last_name) as requester_name
+              FROM facility_bookings fb
+              INNER JOIN households h ON fb.household_id = h.household_id
+              INNER JOIN household_members hm ON h.household_id = hm.household_id AND hm.is_primary = 1
+              INNER JOIN users u ON hm.user_id = u.user_id
+              WHERE fb.status = 'approved' AND fb.booking_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+              ORDER BY fb.booking_date ASC, fb.start_time ASC
+              LIMIT 8";
+$approved_schedule = $conn->query($approved_schedule_query);
+if (!$approved_schedule) {
+  $approved_schedule = false;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -100,6 +114,7 @@ if (!$pending_bookings) {
       <li><a href="payments.php" onclick="closeMenu()"><span class="text">Payments & Dues</span></a></li>
       <li><a href="bookings.php" onclick="closeMenu()"><span class="text">Facility Bookings</span></a></li>
       <li><a href="announcements.php" onclick="closeMenu()"><span class="text">Announcements</span></a></li>
+      <li><a href="events.php" onclick="closeMenu()"><span class="text">Events</span></a></li>
       <li><a href="reports.php" onclick="closeMenu()"><span class="text">Reports</span></a></li>
       <li><a href="../auth/logout.php" onclick="closeMenu()"><span class="text">Logout</span></a></li>
     </ul>
@@ -247,6 +262,33 @@ if (!$pending_bookings) {
               <span class="action-text">Generate Report</span>
             </a>
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Upcoming Approved Amenities (7 Days)</h2>
+          <a href="bookings.php?status=approved" class="view-all-link">View All →</a>
+        </div>
+        <div class="card-content">
+          <?php if ($approved_schedule && $approved_schedule->num_rows > 0): ?>
+            <div class="bookings-list">
+              <?php while ($approved = $approved_schedule->fetch_assoc()): ?>
+                <div class="booking-item">
+                  <div class="booking-info">
+                    <h4><?php echo htmlspecialchars($approved['facility_name']); ?></h4>
+                    <p><strong><?php echo htmlspecialchars($approved['unit_number']); ?></strong> • <?php echo htmlspecialchars($approved['requester_name']); ?></p>
+                    <p class="booking-date">
+                      <?php echo date('M d, Y', strtotime($approved['booking_date'])); ?>
+                      (<?php echo date('g:i A', strtotime($approved['start_time'])); ?> - <?php echo date('g:i A', strtotime($approved['end_time'])); ?>)
+                    </p>
+                  </div>
+                </div>
+              <?php endwhile; ?>
+            </div>
+          <?php else: ?>
+            <p class="no-data">No approved amenities schedule in the next 7 days</p>
+          <?php endif; ?>
         </div>
       </div>
     </div>

@@ -120,6 +120,10 @@ $conn->query($update_overdue);
     .btn-verify:hover { background: #ff8c00; }
     .btn-edit { background: #007bff; color: white; }
     .btn-edit:hover { background: #0056b3; }
+    .btn-archive { background: #6c757d; color: white; }
+    .btn-archive:hover { background: #5a6268; }
+    .btn-delete { background: #dc3545; color: white; }
+    .btn-delete:hover { background: #c82333; }
     .empty-state { text-align: center; padding: 60px 20px; color: #6c757d; }
     .empty-state i { font-size: 64px; margin-bottom: 20px; opacity: 0.3; }
     
@@ -160,6 +164,7 @@ $conn->query($update_overdue);
       <li class="active"><a href="payments.php" onclick="closeMenu()"><span class="text">Payments & Dues</span></a></li>
       <li><a href="bookings.php" onclick="closeMenu()"><span class="text">Facility Bookings</span></a></li>
       <li><a href="announcements.php" onclick="closeMenu()"><span class="text">Announcements</span></a></li>
+      <li><a href="events.php" onclick="closeMenu()"><span class="text">Events</span></a></li>
       <li><a href="reports.php" onclick="closeMenu()"><span class="text">Reports</span></a></li>
       <li><a href="../auth/logout.php" onclick="closeMenu()"><span class="text">Logout</span></a></li>
     </ul>
@@ -172,6 +177,33 @@ $conn->query($update_overdue);
       <h1>Payments & Dues Management</h1>
       <p class="breadcrumb">Home > Payments & Dues</p>
     </div>
+
+    <?php if (isset($_GET['success'])): ?>
+      <div class="alert alert-success">
+        <?php
+          if ($_GET['success'] == 'dues_added') echo 'Monthly dues added successfully.';
+          elseif ($_GET['success'] == 'payment_recorded') echo 'Payment recorded successfully.';
+          elseif ($_GET['success'] == 'dues_updated') echo 'Dues updated successfully.';
+          elseif ($_GET['success'] == 'payment_verified') echo 'Payment verified successfully.';
+          elseif ($_GET['success'] == 'payment_archived') echo 'Payment archived successfully.';
+          elseif ($_GET['success'] == 'payment_deleted') echo 'Payment deleted successfully.';
+          elseif ($_GET['success'] == 'dues_deleted') echo 'Dues record deleted successfully.';
+        ?>
+      </div>
+    <?php endif; ?>
+
+    <?php if (isset($_GET['error'])): ?>
+      <div class="alert alert-error">
+        <?php
+          if ($_GET['error'] == 'duplicate') echo 'This dues period already exists for the selected household.';
+          elseif ($_GET['error'] == 'dues_has_payment') echo 'Cannot delete dues with payment records. Delete payment first.';
+          elseif ($_GET['error'] == 'payment_not_found') echo 'Payment record not found.';
+          elseif ($_GET['error'] == 'delete_failed') echo 'Delete action failed.';
+          elseif ($_GET['error'] == 'archive_failed') echo 'Archive action failed.';
+          else echo 'An action failed. Please try again.';
+        ?>
+      </div>
+    <?php endif; ?>
 
     <!-- Statistics Cards -->
     <div class="stats-grid">
@@ -306,10 +338,21 @@ $conn->query($update_overdue);
                     <button class="action-btn btn-view" onclick="viewPaymentDetails(<?php echo $due['payment_id']; ?>)">
                       <i class="fas fa-eye"></i> View
                     </button>
+                    <button class="action-btn btn-archive" onclick="archivePayment(<?php echo $due['payment_id']; ?>)">
+                      <i class="fas fa-box-archive"></i> Archive
+                    </button>
+                    <button class="action-btn btn-delete" onclick="deletePayment(<?php echo $due['payment_id']; ?>)">
+                      <i class="fas fa-trash"></i> Delete Payment
+                    </button>
                   <?php endif; ?>
                   <button class="action-btn btn-edit" onclick="editDues(<?php echo $due['dues_id']; ?>)">
                     <i class="fas fa-edit"></i> Edit
                   </button>
+                  <?php if (!$due['payment_id']): ?>
+                    <button class="action-btn btn-delete" onclick="deleteDues(<?php echo $due['dues_id']; ?>)">
+                      <i class="fas fa-trash"></i> Delete Dues
+                    </button>
+                  <?php endif; ?>
                 </td>
               </tr>
             <?php endforeach; ?>
@@ -482,6 +525,24 @@ $conn->query($update_overdue);
     
     function editDues(duesId) {
       window.location.href = 'edit_dues.php?id=' + duesId;
+    }
+
+    function archivePayment(paymentId) {
+      if (confirm('Archive this payment record?')) {
+        window.location.href = 'payments_action.php?action=archive_payment&payment_id=' + paymentId;
+      }
+    }
+
+    function deletePayment(paymentId) {
+      if (confirm('Delete this payment record permanently? This will reset the dues status to unpaid.')) {
+        window.location.href = 'payments_action.php?action=delete_payment&payment_id=' + paymentId;
+      }
+    }
+
+    function deleteDues(duesId) {
+      if (confirm('Delete this dues record permanently?')) {
+        window.location.href = 'payments_action.php?action=delete_dues&dues_id=' + duesId;
+      }
     }
     
     // Close modals when clicking outside
