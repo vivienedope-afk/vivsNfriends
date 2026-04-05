@@ -100,6 +100,7 @@ if (!$pending_bookings) {
       <li><a href="payments.php" onclick="closeMenu()"><span class="text">Payments & Dues</span></a></li>
       <li><a href="bookings.php" onclick="closeMenu()"><span class="text">Facility Bookings</span></a></li>
       <li><a href="announcements.php" onclick="closeMenu()"><span class="text">Announcements</span></a></li>
+      <li><a href="email_notifayer.php" onclick="closeMenu()"><span class="text">Email Notifayer</span></a></li>
       <li><a href="reports.php" onclick="closeMenu()"><span class="text">Reports</span></a></li>
       <li><a href="../auth/logout.php" onclick="closeMenu()"><span class="text">Logout</span></a></li>
     </ul>
@@ -249,7 +250,24 @@ if (!$pending_bookings) {
           </div>
         </div>
       </div>
-    </div>
+
+      </div>
+          <div class="card Notifayer-card">
+        <div class="card-header">
+          <h2>Notifayer</h2>
+        </div>
+        <div class="card-content">
+          <div class="actions-grid">
+            <a href="email_notifayer.php" class="action-btn blue-action">
+              <span class="action-icon">📧</span>
+              <span class="action-text">Email Notifayer</span>
+            </a>
+            <a href="email_notifayer.php" class="action-btn green-action">
+              <span class="action-icon">📲</span>
+              <span class="action-text">Send Notifications</span>
+            </a>
+          </div>
+        </div>
   </main>
 
   <script>
