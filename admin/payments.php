@@ -161,6 +161,7 @@ $conn->query($update_overdue);
       <li class="active"><a href="payments.php" onclick="closeMenu()"><span class="text">Payments & Dues</span></a></li>
       <li><a href="bookings.php" onclick="closeMenu()"><span class="text">Facility Bookings</span></a></li>
       <li><a href="announcements.php" onclick="closeMenu()"><span class="text">Announcements</span></a></li>
+      <li><a href="email_notifayer.php" onclick="closeMenu()"><span class="text">Email Notifayer</span></a></li>
       <li><a href="reports.php" onclick="closeMenu()"><span class="text">Reports</span></a></li>
       <li><a href="../auth/logout.php" onclick="closeMenu()"><span class="text">Logout</span></a></li>
     </ul>
