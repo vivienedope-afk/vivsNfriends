@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once('config/database.php');
+require_once('config/NotificationService.php');
 
 header('Content-Type: application/json');
 
@@ -18,35 +19,21 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 }
 
 $conn = getDBConnection();
+$notificationService = new NotificationService($conn);
 $current_user_id = $_SESSION['user_id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get') {
     // Get current notification preferences
-    $query = "SELECT email_notifications, sms_notifications FROM notification_preferences WHERE user_id = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $current_user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        $preferences = $result->fetch_assoc();
-        echo json_encode([
-            'success' => true,
-            'preferences' => [
-                'email_notifications' => (bool)$preferences['email_notifications'],
-                'sms_notifications' => (bool)$preferences['sms_notifications']
-            ]
-        ]);
-    } else {
-        // Return default preferences if none exist
-        echo json_encode([
-            'success' => true,
-            'preferences' => [
-                'email_notifications' => true,
-                'sms_notifications' => false
-            ]
-        ]);
-    }
+    $preferences = $notificationService->getUserPreferences($current_user_id);
+    
+    echo json_encode([
+        'success' => true,
+        'preferences' => [
+            'email_notifications' => (bool)$preferences['email_notifications'],
+            'sms_notifications' => (bool)$preferences['sms_notifications']
+        ]
+    ]);
+    
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'save') {
     // Save notification preferences
     $email_notifications = isset($_POST['email_notifications']) ? (int)$_POST['email_notifications'] : 0;
@@ -82,6 +69,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'message' => 'Failed to save notification preferences: ' . $stmt->error
         ]);
     }
+
+} elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'test') {
+    // Send test notification
+    $test_results = $notificationService->sendNotification(
+        $current_user_id,
+        'Test Notification - Maia Alta HOA',
+        'This is a test notification from your notification system. If you received this, your notifications are working properly!',
+        'test'
+    );
+    
+    echo json_encode([
+        'success' => true,
+        'message' => 'Test notification sent',
+        'results' => $test_results
+    ]);
+
+} elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'history') {
+    // Get notification history
+    $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
+    $history = $notificationService->getNotificationLog($current_user_id, $limit);
+    
+    echo json_encode([
+        'success' => true,
+        'history' => $history
+    ]);
+
 } else {
     echo json_encode([
         'success' => false,

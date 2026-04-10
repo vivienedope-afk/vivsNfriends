@@ -380,11 +380,175 @@ $next_account_number = generateAccountNumber($conn);
     </div>
   </div>
 
+  <!-- Status Change Confirmation Modal -->
+  <div id="statusConfirmationModal" class="confirmation-modal">
+    <div class="confirmation-content">
+      <div class="confirmation-icon" id="statusIconEl">
+        <i class="icon">⚠</i>
+      </div>
+      <h3 id="statusTitle">Confirm Action</h3>
+      <p id="statusMessage">Are you sure?</p>
+      <div class="confirmation-buttons">
+        <button class="btn-confirm-yes" onclick="executeStatusChange()">
+          Yes, Confirm
+        </button>
+        <button class="btn-confirm-no" onclick="closeStatusConfirmation()">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* Status Confirmation Modal Styles */
+    .confirmation-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .confirmation-modal.show {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .confirmation-content {
+      background: white;
+      border-radius: 12px;
+      padding: 40px 30px;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .confirmation-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 32px;
+      font-weight: bold;
+    }
+
+    .confirmation-icon.deactivate-icon {
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      color: white;
+    }
+
+    .confirmation-icon.activate-icon {
+      background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+      color: white;
+    }
+
+    #statusTitle {
+      font-size: 20px;
+      color: #2c3e50;
+      margin: 15px 0 10px 0;
+      font-weight: 600;
+    }
+
+    #statusMessage {
+      font-size: 14px;
+      color: #666;
+      margin: 0 0 25px 0;
+      line-height: 1.6;
+    }
+
+    .confirmation-buttons {
+      display: flex;
+      gap: 12px;
+      flex-direction: column;
+    }
+
+    .btn-confirm-yes,
+    .btn-confirm-no {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-confirm-yes {
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      color: white;
+    }
+
+    .btn-confirm-yes:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(231, 76, 60, 0.3);
+    }
+
+    .btn-confirm-no {
+      background: #ecf0f1;
+      color: #7f8c8d;
+    }
+
+    .btn-confirm-no:hover {
+      background: #dee2e6;
+      color: #555;
+    }
+
+    @media (max-width: 480px) {
+      .confirmation-content {
+        padding: 30px 20px;
+      }
+
+      .confirmation-buttons {
+        flex-direction: column;
+      }
+
+      .btn-confirm-yes,
+      .btn-confirm-no {
+        width: 100%;
+      }
+    }
+  </style>
+
   <script>
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
     const menuBtn = document.querySelector('.menu-btn');
     const modal = document.getElementById('addResidentModal');
+    
+    // Status change confirmation variables
+    let pendingStatusChange = null;
 
     function toggleMenu() {
       sidebar.classList.toggle('open');
@@ -412,8 +576,58 @@ $next_account_number = generateAccountNumber($conn);
 
     function toggleStatus(userId, currentStatus) {
       const action = currentStatus === 'active' ? 'deactivate' : 'activate';
-      if (confirm('Are you sure you want to ' + action + ' this account?')) {
+      const isDeactivating = action === 'deactivate';
+      
+      const modal = document.getElementById('statusConfirmationModal');
+      const iconEl = document.getElementById('statusIconEl');
+      const titleEl = document.getElementById('statusTitle');
+      const messageEl = document.getElementById('statusMessage');
+      const confirmBtn = modal.querySelector('.btn-confirm-yes');
+      
+      // Update modal appearance based on action
+      if (isDeactivating) {
+        iconEl.className = 'confirmation-icon deactivate-icon';
+        iconEl.innerHTML = '<i class="icon">✕</i>';
+        titleEl.textContent = 'Deactivate Account';
+        messageEl.textContent = 'Are you sure you want to deactivate this account? The resident will not be able to log in until reactivated.';
+        confirmBtn.textContent = 'Yes, Deactivate';
+      } else {
+        iconEl.className = 'confirmation-icon activate-icon';
+        iconEl.innerHTML = '<i class="icon">✓</i>';
+        titleEl.textContent = 'Activate Account';
+        messageEl.textContent = 'Are you sure you want to activate this account? The resident will be able to log in again.';
+        confirmBtn.textContent = 'Yes, Activate';
+      }
+      
+      // Store pending change
+      pendingStatusChange = {
+        userId: userId,
+        currentStatus: currentStatus,
+        action: action
+      };
+      
+      modal.classList.add('show');
+    }
+
+    function closeStatusConfirmation() {
+      const modal = document.getElementById('statusConfirmationModal');
+      modal.classList.remove('show');
+      pendingStatusChange = null;
+    }
+
+    function executeStatusChange() {
+      if (pendingStatusChange) {
+        const { userId, currentStatus, action } = pendingStatusChange;
+        closeStatusConfirmation();
         window.location.href = 'residents_action.php?action=toggle_status&user_id=' + userId + '&status=' + currentStatus;
+      }
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const statusModal = document.getElementById('statusConfirmationModal');
+      if (event.target === statusModal) {
+        closeStatusConfirmation();
       }
     }
   </script>

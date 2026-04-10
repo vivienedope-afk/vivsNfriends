@@ -75,20 +75,20 @@ body {
 
 .logo {
   height: 90px;
-  margin: 20px auto;
+  margin: 24px auto;
   cursor: pointer;
   display: block;
   transition: transform 0.3s ease, filter 0.3s ease;
   border-radius: 12px;
-  padding: 8px;
+  padding: 12px;
 }
 
 .user-info-sidebar {
   text-align: center;
-  padding: 12px;
+  padding: 16px;
   background: rgba(255, 255, 255, 0.3);
   border-radius: 8px;
-  margin: 10px 15px 15px;
+  margin: 8px 16px 16px;
 }
 
 .user-info-sidebar .user-name {
@@ -108,7 +108,7 @@ body {
   list-style: none;
   padding: 0;
   width: 100%;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .nav-links li {
@@ -121,8 +121,8 @@ body {
   font-family: 'Arial', sans-serif;
   font-size: 13px;
   letter-spacing: 0.5px;
-  padding: 18px 0;
-  margin: 4px 8px;
+  padding: 16px 8px;
+  margin: 8px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -164,7 +164,7 @@ body {
 .icon {
   display: block;
   font-size: 0.9rem; /* slightly smaller and scalable */
-  margin-bottom: 5px;
+  margin-bottom: 8px;
   transition: transform 0.2s ease;
 }
 

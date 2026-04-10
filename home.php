@@ -280,6 +280,11 @@ $events = $conn->query($events_query);
             </label>
           </div>
         </div>
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+          <h4>Notification Tools</h4>
+          <button class="test-btn" onclick="sendTestNotification()" style="background-color: #4CAF50; color: white; padding: 10px 20px; margin-right: 10px; border: none; border-radius: 5px; cursor: pointer;">Send Test Notification</button>
+          <button class="history-btn" onclick="loadNotificationHistory()" style="background-color: #2196F3; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">View History</button>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="save-btn" onclick="saveNotificationSettings()">Save Settings</button>

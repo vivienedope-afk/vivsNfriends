@@ -167,11 +167,24 @@ if ($app['reviewed_by']) {
 
   .rejection-form {
     display: none;
-    margin-top: 20px;
-    padding: 20px;
-    background: #fff3cd;
-    border-radius: 8px;
-    border: 1px solid #ffeaa7;
+    margin-top: 25px;
+    padding: 28px;
+    background: linear-gradient(135deg, #fff9e6 0%, #fffbf0 100%);
+    border-radius: 12px;
+    border: 2px solid #ffd89e;
+    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.1);
+    animation: slideDown 0.3s ease-out;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-15px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .rejection-form.show {
@@ -179,46 +192,115 @@ if ($app['reviewed_by']) {
   }
 
   .rejection-form label {
-    display: block;
+    display: flex;
+    align-items: center;
     font-weight: 600;
-    margin-bottom: 10px;
-    color: #856404;
+    margin-bottom: 16px;
+    color: #8b5a2b;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+  }
+
+  .rejection-form label::before {
+    content: '⚠';
+    margin-right: 10px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
   }
 
   .rejection-form textarea {
     width: 100%;
-    padding: 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 6px;
+    padding: 16px;
+    border: 2px solid #ffe0b2;
+    border-radius: 8px;
     font-family: 'Roboto', sans-serif;
     font-size: 14px;
-    min-height: 100px;
+    min-height: 110px;
     resize: vertical;
+    background: white;
+    color: #333;
+    transition: all 0.3s ease;
+    line-height: 1.6;
+  }
+
+  .rejection-form textarea::placeholder {
+    color: #b0a08f;
+  }
+
+  .rejection-form textarea:focus {
+    outline: none;
+    border-color: #ff9800;
+    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.1);
+    background: #fafaf8;
   }
 
   .rejection-form-buttons {
     display: flex;
-    gap: 10px;
-    margin-top: 15px;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
   }
 
   .btn-submit-rejection, .btn-cancel-rejection {
-    padding: 10px 20px;
+    padding: 12px 28px;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .btn-submit-rejection {
-    background: #e74c3c;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
     color: white;
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);
+    min-width: 160px;
+  }
+
+  .btn-submit-rejection:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
+  }
+
+  .btn-submit-rejection:active {
+    transform: translateY(0);
   }
 
   .btn-cancel-rejection {
-    background: #95a5a6;
-    color: white;
+    background: #ecf0f1;
+    color: #7f8c8d;
+    border: 2px solid #bdc3c7;
+    min-width: 120px;
+  }
+
+  .btn-cancel-rejection:hover {
+    background: #dee2e6;
+    color: #555;
+    border-color: #999;
+    transform: translateY(-2px);
+  }
+
+  .btn-cancel-rejection:active {
+    transform: translateY(0);
+  }
+
+  @media (max-width: 600px) {
+    .rejection-form {
+      padding: 20px;
+    }
+
+    .rejection-form-buttons {
+      flex-direction: column;
+    }
+
+    .btn-submit-rejection,
+    .btn-cancel-rejection {
+      width: 100%;
+    }
   }
 
   .status-display {
@@ -375,10 +457,10 @@ if ($app['reviewed_by']) {
 
 <?php if ($app['status'] === 'pending'): ?>
   <div class="action-buttons">
-    <button class="btn-approve" onclick="approveApplication(<?php echo $app['application_id']; ?>)">
+    <button type="button" class="btn-approve" onclick="approveApplication(<?php echo $app['application_id']; ?>)">
       Approve Application
     </button>
-    <button class="btn-reject" onclick="showRejectionForm()">
+    <button type="button" class="btn-reject" onclick="showRejectionForm()">
       Reject Application
     </button>
   </div>
@@ -388,44 +470,15 @@ if ($app['reviewed_by']) {
     <textarea id="rejection_reason" name="rejection_reason" 
               placeholder="Please provide a reason for rejection..."></textarea>
     <div class="rejection-form-buttons">
-      <button class="btn-submit-rejection" onclick="rejectApplication(<?php echo $app['application_id']; ?>)">
+      <button type="button" class="btn-submit-rejection" onclick="rejectApplication(<?php echo $app['application_id']; ?>)">
         Confirm Rejection
       </button>
-      <button class="btn-cancel-rejection" onclick="hideRejectionForm()">
+      <button type="button" class="btn-cancel-rejection" onclick="hideRejectionForm()">
         Cancel
       </button>
     </div>
   </div>
 
-  <script>
-    function approveApplication(appId) {
-      if (confirm('Are you sure you want to APPROVE this application? This will create an account and send credentials to the applicant.')) {
-        window.location.href = `process_application.php?action=approve&id=${appId}`;
-      }
-    }
-
-    function showRejectionForm() {
-      document.getElementById('rejectionForm').classList.add('show');
-    }
-
-    function hideRejectionForm() {
-      document.getElementById('rejectionForm').classList.remove('show');
-      document.getElementById('rejection_reason').value = '';
-    }
-
-    function rejectApplication(appId) {
-      const reason = document.getElementById('rejection_reason').value.trim();
-      
-      if (reason === '') {
-        alert('Please provide a reason for rejection.');
-        return;
-      }
-
-      if (confirm('Are you sure you want to REJECT this application?')) {
-        window.location.href = `process_application.php?action=reject&id=${appId}&reason=${encodeURIComponent(reason)}`;
-      }
-    }
-  </script>
 <?php endif; ?>
 
 <?php $conn->close(); ?>

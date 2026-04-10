@@ -1,6 +1,7 @@
 <?php
 require_once('../auth/session_check.php');
 require_once('../config/database.php');
+require_once('../config/NotificationHelper.php');
 requireAdmin();
 
 $conn = getDBConnection();
@@ -136,12 +137,38 @@ if ($action === 'approve') {
         // Commit transaction
         $conn->commit();
         
-        // TODO: Send welcome email with credentials
-        // TODO: Send SMS notification
+        // Send welcome email with credentials and login instructions
+        $service = getNotificationService();
+        $subject = "Welcome to Maia Alta HOA - Account Created";
+        $email_message = "
+            <p>Dear {$application['first_name']},</p>
+            <p>Congratulations! Your account application has been <strong>APPROVED</strong>.</p>
+            <p>Your account has been successfully created. Below are your login credentials:</p>
+            <ul style='background-color: #f5f5f5; padding: 15px; border-radius: 5px; font-weight: 500;'>
+                <li><strong>Account Number:</strong> {$account_number}</li>
+                <li><strong>Temporary Password:</strong> {$password}</li>
+            </ul>
+            <p><strong>How to Login:</strong></p>
+            <ol>
+                <li>Visit the resident portal at <a href='http://maiaalthoa.com/login.php'>http://maiaalthoa.com/login.php</a></li>
+                <li>Use your Account Number as the username</li>
+                <li>Enter the temporary password provided above</li>
+                <li>You will be prompted to change your password on first login</li>
+            </ol>
+            <p><strong>Important:</strong> Please keep your credentials confidential and change your password after your first login.</p>
+            <p>If you experience any issues accessing your account, please contact the management office.</p>
+            <p>Welcome to Maia Alta Homes!</p>
+        ";
         
-        // For now, we'll just redirect with success and credentials
-        // In production, this should be sent via email/SMS
-        $credentials_info = "Account: $account_number | Password: $password";
+        // Email notification
+        $email_sent = $service->sendEmailNotification($user_id, $subject, $email_message, 'account');
+        
+        // SMS notification (shorter message)
+        $sms_message = "Welcome to Maia Alta HOA! Your application has been approved. Account Number: {$account_number}. Check your email for login password and instructions.";
+        $sms_sent = $service->sendSMSNotification($user_id, $sms_message, 'account');
+        
+        // Log the action
+        $credentials_info = "Account: $account_number | Password: $password | Email Sent: " . ($email_sent ? 'Yes' : 'No') . " | SMS Sent: " . ($sms_sent ? 'Yes' : 'No');
         error_log("NEW ACCOUNT CREATED - Email: {$application['email']} | $credentials_info");
         
         header('Location: applications.php?success=approved');
@@ -175,8 +202,54 @@ if ($action === 'reject') {
     $reject_stmt->bind_param("sii", $rejection_reason, $current_user['user_id'], $app_id);
     
     if ($reject_stmt->execute()) {
-        // TODO: Send rejection email/SMS with reason
-        error_log("Application #{$app_id} rejected. Reason: $rejection_reason");
+        // Send rejection notification email and SMS
+        $service = getNotificationService();
+        $subject = "Account Application Status - Decision Made";
+        $email_message = "
+            <p>Dear {$application['first_name']},</p>
+            <p>Thank you for submitting your account application to Maia Alta HOA.</p>
+            <p>After careful review, we regret to inform you that your application has been <strong>REJECTED</strong>.</p>
+            <p><strong>Reason for Rejection:</strong></p>
+            <div style='background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 10px 0;'>
+                {$rejection_reason}
+            </div>
+            <p>If you believe this decision was made in error, or if you have additional information to provide, please contact the management office to discuss your application further.</p>
+            <p>Thank you for your understanding.</p>
+            <p>Maia Alta HOA Management Team</p>
+        ";
+        
+        // Email notification
+        $email_sent = $service->sendEmailNotification(0, $subject, $email_message, 'account');
+        // Note: We use direct email since user doesn't exist yet
+        $to = $application['email'];
+        $name = $application['first_name'] . ' ' . $application['last_name'];
+        $headers = "MIME-Version: 1.0" . "\r\n";
+        $headers .= "Content-type: text/html; charset=UTF-8" . "\r\n";
+        $headers .= "From: Maia Alta HOA <noreply@maiaalthoa.com>" . "\r\n";
+        $headers .= "Reply-To: support@maiaalthoa.com" . "\r\n";
+        $email_sent = mail($to, $subject, $email_message, $headers);
+        
+        // SMS notification
+        $sms_message = "Dear {$application['first_name']}, your account application to Maia Alta HOA has been reviewed. Please check your email for the decision details.";
+        
+        // For SMS, we need to format the phone number and send directly
+        $phone = preg_replace('/\D/', '', $application['contact_number']);
+        if (strlen($phone) == 10 && substr($phone, 0, 1) == '9') {
+            $phone = '63' . substr($phone, 1);
+        } elseif (strlen($phone) == 11 && substr($phone, 0, 2) == '09') {
+            $phone = '63' . substr($phone, 2);
+        }
+        
+        $log_dir = __DIR__ . '/../logs';
+        if (!file_exists($log_dir)) {
+            mkdir($log_dir, 0755, true);
+        }
+        $log_file = $log_dir . '/sms_log.txt';
+        $timestamp = date('Y-m-d H:i:s');
+        $log_entry = "[{$timestamp}] Phone: {$phone} | Message: {$sms_message}\n";
+        file_put_contents($log_file, $log_entry, FILE_APPEND);
+        
+        error_log("Application #{$app_id} rejected. Email Sent: " . ($email_sent ? 'Yes' : 'No') . " | Reason: $rejection_reason");
         
         header('Location: applications.php?success=rejected');
         exit();

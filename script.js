@@ -184,14 +184,117 @@ function closeLedgerModal() {
   modal.style.display = 'none';
 }
 
+// Send Test Notification
+function sendTestNotification() {
+  if (!confirm('Send a test notification to your email and SMS (if enabled)?')) {
+    return;
+  }
+
+  fetch('save_notification_settings.php?action=test', {
+    credentials: 'same-origin'
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Test notification sent! Check your email and SMS (if enabled).');
+    } else {
+      alert('Error sending test notification: ' + data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred while sending test notification.');
+  });
+}
+
+// Load Notification History
+function loadNotificationHistory() {
+  fetch('save_notification_settings.php?action=history&limit=50', {
+    credentials: 'same-origin'
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      displayNotificationHistory(data.history);
+    } else {
+      alert('Error loading notification history: ' + data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred while loading notification history.');
+  });
+}
+
+// Display Notification History
+function displayNotificationHistory(history) {
+  const modal = document.getElementById('notificationHistoryModal');
+  const historyList = document.getElementById('notificationHistoryList');
+  
+  if (!modal) {
+    // Create modal if it doesn't exist
+    const newModal = document.createElement('div');
+    newModal.id = 'notificationHistoryModal';
+    newModal.className = 'modal';
+    newModal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Notification History</h2>
+          <span class="close" onclick="closeNotificationHistoryModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div id="notificationHistoryList" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(newModal);
+  }
+
+  const list = document.getElementById('notificationHistoryList');
+  
+  if (history.length === 0) {
+    list.innerHTML = '<p>No notifications sent yet.</p>';
+  } else {
+    let html = '<table style="width: 100%; border-collapse: collapse;">';
+    html += '<tr style="border-bottom: 2px solid #ddd;"><th style="text-align: left; padding: 10px;">Type</th><th style="text-align: left; padding: 10px;">Subject</th><th style="text-align: left; padding: 10px;">Status</th><th style="text-align: left; padding: 10px;">Date</th></tr>';
+    
+    history.forEach(item => {
+      const statusColor = item.status === 'sent' ? '#4CAF50' : item.status === 'skipped' ? '#FFC107' : '#F44336';
+      html += `<tr style="border-bottom: 1px solid #ddd;">
+        <td style="padding: 10px;">${item.notification_type}</td>
+        <td style="padding: 10px;">${item.subject}</td>
+        <td style="padding: 10px; color: ${statusColor}; font-weight: bold;">${item.status}</td>
+        <td style="padding: 10px;">${item.created_at}</td>
+      </tr>`;
+    });
+    
+    html += '</table>';
+    list.innerHTML = html;
+  }
+  
+  document.getElementById('notificationHistoryModal').style.display = 'block';
+}
+
+function closeNotificationHistoryModal() {
+  const modal = document.getElementById('notificationHistoryModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
 // Close modal when clicking outside
 window.onclick = function(event) {
   const settingsModal = document.getElementById('settingsModal');
   const ledgerModal = document.getElementById('ledgerModal');
+  const historyModal = document.getElementById('notificationHistoryModal');
+  
   if (event.target == settingsModal) {
     settingsModal.style.display = 'none';
   }
   if (event.target == ledgerModal) {
     ledgerModal.style.display = 'none';
+  }
+  if (event.target == historyModal) {
+    historyModal.style.display = 'none';
   }
 }
