@@ -35,8 +35,8 @@ switch ($action) {
         $stmt->bind_param("sssss", $title, $content, $announcement_type, $current_user['user_id'], $expiry_date);
         
         if ($stmt->execute()) {
-            // Send announcement notifications to all active residents (email + SMS based on user preferences)
-            $notification_results = broadcastAnnouncement($title, $content);
+            // FIXED: Added $conn as first parameter
+            $notification_results = broadcastAnnouncement($conn, $title, $content, $announcement_type);
 
             // Additional direct email send to owner's Gmail inbox for guaranteed copy
             $owner_gmail = 'vivienedope@gmail.com';
@@ -62,13 +62,11 @@ switch ($action) {
             if (is_array($notification_results)) {
                 foreach ($notification_results as $resident_user_id => $result) {
                     $email_ok = isset($result['email']) ? (bool)$result['email'] : false;
-                    $sms_ok = isset($result['sms']) ? (bool)$result['sms'] : false;
 
-                    if (!$email_ok || !$sms_ok) {
+                    if (!$email_ok) {
                         error_log(
-                            "Announcement notification partial/failed for user_id={$resident_user_id}. " .
-                            "email=" . ($email_ok ? 'sent' : 'failed/skipped') . ", " .
-                            "sms=" . ($sms_ok ? 'sent' : 'failed/skipped')
+                            "Announcement notification failed for user_id={$resident_user_id}. " .
+                            "email=" . ($email_ok ? 'sent' : 'failed/skipped')
                         );
                     }
                 }
@@ -93,13 +91,11 @@ switch ($action) {
         $announcement_type = isset($_POST['announcement_type']) ? $_POST['announcement_type'] : '';
         $expiry_date = isset($_POST['expiry_date']) ? $_POST['expiry_date'] : null;
         
-        // Validation
         if (empty($title) || empty($content) || empty($announcement_type)) {
             header("Location: announcements.php?error=required_fields");
             exit();
         }
         
-        // Check if announcement exists
         $check_query = "SELECT announcement_id FROM announcements WHERE announcement_id = ?";
         $stmt = $conn->prepare($check_query);
         $stmt->bind_param("i", $announcement_id);
@@ -136,7 +132,6 @@ switch ($action) {
             exit();
         }
         
-        // Check if announcement exists
         $check_query = "SELECT announcement_id FROM announcements WHERE announcement_id = ?";
         $stmt = $conn->prepare($check_query);
         $stmt->bind_param("i", $announcement_id);
@@ -165,7 +160,6 @@ switch ($action) {
             exit();
         }
         
-        // Check if announcement exists
         $check_query = "SELECT announcement_id FROM announcements WHERE announcement_id = ?";
         $stmt = $conn->prepare($check_query);
         $stmt->bind_param("i", $announcement_id);

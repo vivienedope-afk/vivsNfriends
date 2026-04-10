@@ -1,225 +1,145 @@
 <?php
 /**
- * Notification Helper Functions
- * Easy-to-use functions for triggering notifications throughout the application
+ * NotificationHelper.php
+ * Central notification dispatcher for Maia Alta HOA
  */
 
-require_once(__DIR__ . '/NotificationService.php');
+require_once __DIR__ . '/../helpers/EmailService.php';
+require_once __DIR__ . '/../helpers/SmsService.php';
 
-/**
- * Initialize notification service (singleton pattern)
- */
-$_notification_service = null;
-
-function getNotificationService() {
-    global $_notification_service;
-    if ($_notification_service === null) {
-        $_notification_service = new NotificationService();
+/* ============================================================
+   HELPER: Get admin email
+   ============================================================ */
+function getAdminEmail($conn) {
+    $sql = "SELECT email FROM users WHERE user_role = 'admin' AND status = 'active' LIMIT 1";
+    $result = $conn->query($sql);
+    if ($result && $row = $result->fetch_assoc()) {
+        return $row['email'];
     }
-    return $_notification_service;
+    return null;
 }
 
-/**
- * Send payment reminder to household
- * @param int $household_id
- * @param float $amount
- * @param string $due_date
- */
-function notifyPaymentDue($household_id, $amount, $due_date) {
-    $service = getNotificationService();
-    return $service->sendPaymentReminder($household_id, $amount, $due_date);
-}
-
-/**
- * Send announcement to specific resident
- * @param int $user_id
- * @param string $title
- * @param string $content
- */
-function notifyAnnouncement($user_id, $title, $content) {
-    $service = getNotificationService();
-    return $service->sendNotification($user_id, $title, $content, 'announcement');
-}
-
-/**
- * Broadcast announcement to all residents
- * @param string $title
- * @param string $content
- */
-function broadcastAnnouncement($title, $content) {
-    $service = getNotificationService();
-    return $service->sendAnnouncementToAll($title, $content);
-}
-
-/**
- * Send maintenance notification
- * @param int $user_id
- * @param string $maintenance_type
- * @param string $description
- * @param string $scheduled_date
- */
-function notifyMaintenance($user_id, $maintenance_type, $description, $scheduled_date) {
-    $service = getNotificationService();
-    $subject = "Maintenance Notice - {$maintenance_type}";
-    $message = "
-        <p>Dear Resident,</p>
-        <p>We have scheduled maintenance work at your unit:</p>
-        <ul>
-            <li><strong>Type:</strong> {$maintenance_type}</li>
-            <li><strong>Description:</strong> {$description}</li>
-            <li><strong>Scheduled Date:</strong> {$scheduled_date}</li>
-        </ul>
-        <p>Please make sure someone is available during this time.</p>
-        <p>If you have any concerns, please contact the management office.</p>
-    ";
-    return $service->sendNotification($user_id, $subject, $message, 'maintenance');
-}
-
-/**
- * Send payment success notification
- * @param int $user_id
- * @param float $amount
- * @param string $reference_number
- */
-function notifyPaymentSuccess($user_id, $amount, $reference_number) {
-    $service = getNotificationService();
-    $subject = "Payment Confirmation";
-    $message = "
-        <p>Dear Resident,</p>
-        <p>Your payment has been received and verified.</p>
-        <ul>
-            <li><strong>Amount Paid:</strong> PHP " . number_format($amount, 2) . "</li>
-            <li><strong>Reference #:</strong> {$reference_number}</li>
-            <li><strong>Date:</strong> " . date('Y-m-d H:i:s') . "</li>
-        </ul>
-        <p>Thank you for your prompt payment.</p>
-    ";
-    return $service->sendNotification($user_id, $subject, $message, 'payment');
-}
-
-/**
- * Send account application status update
- * @param int $user_id
- * @param string $status (approved, rejected)
- * @param string $notes
- */
-function notifyApplicationStatus($user_id, $status, $notes = '') {
-    $service = getNotificationService();
-    
-    if ($status === 'approved') {
-        $subject = "Account Application Approved";
-        $message = "
-            <p>Congratulations! Your account application has been approved.</p>
-            <p>You can now log in to your account using your account number and password.</p>
-            " . (!empty($notes) ? "<p><strong>Notes:</strong> {$notes}</p>" : "") . "
-            <p>Welcome to Maia Alta Homes!</p>
-        ";
-    } else {
-        $subject = "Account Application Status Update";
-        $message = "
-            <p>Thank you for your application. Unfortunately, your account application has been reviewed.</p>
-            " . (!empty($notes) ? "<p><strong>Reason:</strong> {$notes}</p>" : "") . "
-            <p>Please contact the management office if you have questions.</p>
-        ";
-    }
-    
-    return $service->sendNotification($user_id, $subject, $message, 'account');
-}
-
-/**
- * Send event notification
- * @param array $user_ids
- * @param string $event_title
- * @param string $event_description
- * @param string $event_date
- * @param string $event_time
- * @param string $event_location
- */
-function notifyEvent($user_ids, $event_title, $event_description, $event_date, $event_time, $event_location) {
-    $service = getNotificationService();
-    $subject = "Event Notice - {$event_title}";
-    $message = "
-        <p>You are invited to:</p>
-        <h3>{$event_title}</h3>
-        <p>{$event_description}</p>
-        <ul>
-            <li><strong>Date:</strong> {$event_date}</li>
-            <li><strong>Time:</strong> {$event_time}</li>
-            <li><strong>Location:</strong> {$event_location}</li>
-        </ul>
-        <p>We look forward to your attendance!</p>
-    ";
-    
-    $results = [];
-    if (is_array($user_ids)) {
-        foreach ($user_ids as $user_id) {
-            $results[$user_id] = $service->sendNotification($user_id, $subject, $message, 'event');
+/* ============================================================
+   HELPER: Get all active residents
+   ============================================================ */
+function getActiveResidents($conn) {
+    $sql = "SELECT u.user_id, u.email, u.first_name, u.last_name, u.contact_number,
+                   COALESCE(np.email_notifications, 1) as email_on,
+                   COALESCE(np.sms_notifications, 0) as sms_on
+            FROM users u
+            LEFT JOIN notification_preferences np ON u.user_id = np.user_id
+            WHERE u.user_role = 'resident' AND u.status = 'active'";
+    $result = $conn->query($sql);
+    $residents = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $residents[] = $row;
         }
-    } else {
-        $results = $service->sendNotification($user_ids, $subject, $message, 'event');
     }
+    return $residents;
+}
+
+/* ============================================================
+   HELPER: Get resident by household_id
+   ============================================================ */
+function getResidentByHousehold($conn, $household_id) {
+    $sql = "SELECT u.user_id, u.email, u.first_name, u.last_name, u.contact_number,
+                   COALESCE(np.email_notifications, 1) as email_on,
+                   COALESCE(np.sms_notifications, 0) as sms_on,
+                   h.unit_number
+            FROM households h
+            INNER JOIN household_members hm ON h.household_id = hm.household_id AND hm.is_primary = 1
+            INNER JOIN users u ON hm.user_id = u.user_id
+            LEFT JOIN notification_preferences np ON u.user_id = np.user_id
+            WHERE h.household_id = ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) return null;
+    $stmt->bind_param("i", $household_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result->fetch_assoc();
+}
+
+/* ============================================================
+   HELPER: Log to notification_log
+   ============================================================ */
+function logNotification($conn, $user_id, $type, $subject, $status, $error = null) {
+    $sql = "INSERT INTO notification_log (user_id, notification_type, subject, status, error_message)
+            VALUES (?, ?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $stmt->bind_param("issss", $user_id, $type, $subject, $status, $error);
+        $stmt->execute();
+    }
+}
+
+/* ============================================================
+   1. NOTIFY ADMIN OF NEW BOOKING
+   ============================================================ */
+function notifyAdminNewBooking($conn, $booking_id) {
+    $admin_email = getAdminEmail($conn);
+    if (!$admin_email) return false;
     
-    return $results;
+    $sql = "SELECT fb.*, h.unit_number
+            FROM facility_bookings fb
+            INNER JOIN households h ON fb.household_id = h.household_id
+            WHERE fb.booking_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $booking_id);
+    $stmt->execute();
+    $booking = $stmt->get_result()->fetch_assoc();
+    if (!$booking) return false;
+    
+    $email_svc = getEmailService($conn);
+    
+    $subject = "MAIA ALTA HOA - New Facility Booking Request";
+    $date = date('F d, Y', strtotime($booking['booking_date']));
+    $start = date('g:i A', strtotime($booking['start_time']));
+    $end = date('g:i A', strtotime($booking['end_time']));
+    
+    $body = "
+        <div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto'>
+          <div style='background:#c17f59;padding:20px;text-align:center'>
+            <h2 style='color:white;margin:0'>Maia Alta HOA</h2>
+          </div>
+          <div style='padding:24px;background:#fff'>
+            <p>A new facility booking requires your review.</p>
+            <table style='width:100%;border-collapse:collapse;margin:16px 0'>
+              <tr><td style='padding:8px;background:#f9f9f9;font-weight:bold'>Unit Number</td><td style='padding:8px'>{$booking['unit_number']}</td></tr>
+              <tr><td style='padding:8px;background:#f9f9f9;font-weight:bold'>Facility</td><td style='padding:8px'>{$booking['facility_name']}</td></tr>
+              <tr><td style='padding:8px;background:#f9f9f9;font-weight:bold'>Date</td><td style='padding:8px'>{$date}</td></tr>
+              <tr><td style='padding:8px;background:#f9f9f9;font-weight:bold'>Time</td><td style='padding:8px'>{$start} - {$end}</td></tr>
+              <tr><td style='padding:8px;background:#f9f9f9;font-weight:bold'>Purpose</td><td style='padding:8px'>{$booking['purpose']}</td></tr>
+            </table>
+            <p><a href='http://localhost/vivsNfriends-emailsms/admin/bookings.php' style='background:#c17f59;color:white;padding:10px 20px;text-decoration:none;border-radius:5px'>Review Booking</a></p>
+          </div>
+        </div>";
+    
+    return $email_svc->sendEmail($admin_email, 'Admin', $subject, $body, 'booking', null, $booking_id);
 }
 
-/**
- * Send emergency notification
- * @param int $user_id
- * @param string $message
- */
-function notifyEmergency($user_id, $message) {
-    $service = getNotificationService();
-    $subject = "URGENT: Emergency Notification";
-    return $service->sendNotification($user_id, $subject, $message, 'emergency');
-}
-
-/**
- * Send bulk urgent notification to all residents
- * @param string $subject
- * @param string $message
- */
-function broadcastEmergency($subject, $message) {
-    $service = getNotificationService();
-    return $service->sendAnnouncementToAll($subject, $message);
-}
-
-/**
- * Send password reset notification
- * @param int $user_id
- * @param string $reset_link
- */
-function notifyPasswordReset($user_id, $reset_link) {
-    $service = getNotificationService();
-    $subject = "Password Reset Request";
-    $message = "
-        <p>We received a request to reset your password.</p>
-        <p><a href='{$reset_link}' style='background-color: #8B7355; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Reset Password</a></p>
-        <p>If you did not request this, please ignore this email.</p>
-        <p>This link expires in 24 hours.</p>
-    ";
-    return $service->sendNotification($user_id, $subject, $message, 'account');
-}
-
-/**
- * Get notification history for a user
- * @param int $user_id
- * @param int $limit
- */
-function getNotificationHistory($user_id, $limit = 20) {
-    $service = getNotificationService();
-    return $service->getNotificationLog($user_id, $limit);
-}
-
-/**
- * Send test notification to user
- * @param int $user_id
- * @return array Results
- */
-function sendTestNotification($user_id) {
-    $service = getNotificationService();
-    $subject = "Test Notification - Maia Alta HOA";
-    $message = "This is a test notification from Maia Alta HOA notification system. If you received this, your notifications are working properly!";
-    return $service->sendNotification($user_id, $subject, $message, 'test');
-}
-
-?>
+/* ============================================================
+   2. NOTIFY RESIDENT OF BOOKING STATUS
+   ============================================================ */
+function notifyResidentBookingStatus($conn, $booking_id) {
+    $sql = "SELECT fb.*, h.unit_number
+            FROM facility_bookings fb
+            INNER JOIN households h ON fb.household_id = h.household_id
+            WHERE fb.booking_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $booking_id);
+    $stmt->execute();
+    $booking = $stmt->get_result()->fetch_assoc();
+    if (!$booking) return false;
+    
+    $resident = getResidentByHousehold($conn, $booking['household_id']);
+    if (!$resident) return false;
+    
+    $email_svc = getEmailService($conn);
+    $sms_svc = getSmsService($conn);
+    
+    $status = strtoupper($booking['status']);
+    $facility = $booking['facility_name'];
+    $date = date('F d, Y', strtotime($booking['booking_date']));
+    $start = date('g:i A', strtotime($booking['start_time']));
+    $end = date('g:i A', strtot
