@@ -36,7 +36,7 @@ $announcement_content = "
 ";
 
 // Send to all active residents
-$results = broadcastAnnouncement($announcement_title, $announcement_content);
+$results = broadcastAnnouncement($conn, $announcement_title, $announcement_content);
 
 // Log results
 foreach ($results as $user_id => $result) {
@@ -347,7 +347,7 @@ When integrating notifications in your code:
    - require_once('config/NotificationService.php'); // For advanced control
 
 2. [ ] After CREATE operations, send notifications:
-   - After posting announcement → use broadcastAnnouncement()
+   - After posting announcement → use broadcastAnnouncement($conn, ...)
    - After creating event → use notifyEvent()
    - After registering new account → use notifyApplicationStatus()
 

@@ -67,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'type' => 'Broadcast to All',
                 'result' => true,
                 'details' => broadcastAnnouncement(
+                    $conn,
                     'System Test - Broadcast Announcement',
                     'This is a test broadcast notification. If you received this, please confirm the system is working.'
                 )

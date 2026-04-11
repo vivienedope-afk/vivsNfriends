@@ -60,7 +60,7 @@ class NotificationService {
     /**
      * Get user email and phone
      * @param int $user_id
-     * @return array User contact info
+     * @return array|null User contact info
      */
     public function getUserContact($user_id) {
         $query = "SELECT email, contact_number, first_name, last_name FROM users WHERE user_id = ?";

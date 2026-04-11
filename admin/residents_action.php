@@ -74,6 +74,67 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     }
 }
 
+// Update resident information
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'update') {
+    $user_id = intval($_POST['user_id']);
+    $first_name = trim($_POST['first_name']);
+    $last_name = trim($_POST['last_name']);
+    $email = trim($_POST['email']);
+    $contact_number = trim($_POST['contact_number']);
+    $unit_number = trim($_POST['unit_number']);
+    $lot_number = trim($_POST['lot_number']);
+    $block_number = trim($_POST['block_number']);
+    $resident_type = $_POST['resident_type'];
+
+    // Validate required fields
+    if (empty($first_name) || empty($last_name) || empty($email) || empty($contact_number) || empty($unit_number) || empty($resident_type)) {
+        header('Location: residents.php?error=failed');
+        exit();
+    }
+
+    // Check for duplicate email except current user
+    $check_query = "SELECT user_id FROM users WHERE email = ? AND user_id != ?";
+    $check_stmt = $conn->prepare($check_query);
+    $check_stmt->bind_param("si", $email, $user_id);
+    $check_stmt->execute();
+    $check_result = $check_stmt->get_result();
+    if ($check_result->num_rows > 0) {
+        header('Location: residents.php?error=exists');
+        exit();
+    }
+
+    $conn->begin_transaction();
+    try {
+        $update_user = $conn->prepare("UPDATE users SET first_name = ?, last_name = ?, email = ?, contact_number = ? WHERE user_id = ?");
+        $update_user->bind_param("ssssi", $first_name, $last_name, $email, $contact_number, $user_id);
+        $update_user->execute();
+
+        $household_id = null;
+        $household_stmt = $conn->prepare("SELECT household_id FROM household_members WHERE user_id = ? AND is_primary = 1 LIMIT 1");
+        $household_stmt->bind_param("i", $user_id);
+        $household_stmt->execute();
+        $household_result = $household_stmt->get_result();
+        if ($household = $household_result->fetch_assoc()) {
+            $household_id = $household['household_id'];
+        }
+
+        if ($household_id) {
+            $update_household = $conn->prepare("UPDATE households SET unit_number = ?, lot_number = ?, block_number = ?, resident_type = ? WHERE household_id = ?");
+            $update_household->bind_param("ssssi", $unit_number, $lot_number, $block_number, $resident_type, $household_id);
+            $update_household->execute();
+        }
+
+        $conn->commit();
+        header('Location: residents.php?success=updated');
+        exit();
+    } catch (Exception $e) {
+        $conn->rollback();
+        error_log($e->getMessage());
+        header('Location: residents.php?error=failed');
+        exit();
+    }
+}
+
 // Toggle status (activate/deactivate)
 if (isset($_GET['action']) && $_GET['action'] == 'toggle_status') {
     $user_id = intval($_GET['user_id']);

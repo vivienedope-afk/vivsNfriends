@@ -290,7 +290,18 @@ $next_account_number = generateAccountNumber($conn);
                   <?php echo ucfirst($resident['status']); ?>
                 </td>
                 <td>
-                  <button class="btn-edit" onclick="editResident(<?php echo $resident['user_id']; ?>)">Edit</button>
+                  <button class="btn-edit" onclick="editResident(this)"
+                    data-user-id="<?php echo $resident['user_id']; ?>"
+                    data-account-number="<?php echo htmlspecialchars($resident['account_number']); ?>"
+                    data-first-name="<?php echo htmlspecialchars($resident['first_name']); ?>"
+                    data-last-name="<?php echo htmlspecialchars($resident['last_name']); ?>"
+                    data-email="<?php echo htmlspecialchars($resident['email']); ?>"
+                    data-contact-number="<?php echo htmlspecialchars($resident['contact_number']); ?>"
+                    data-unit-number="<?php echo htmlspecialchars($resident['unit_number']); ?>"
+                    data-lot-number="<?php echo htmlspecialchars($resident['lot_number']); ?>"
+                    data-block-number="<?php echo htmlspecialchars($resident['block_number']); ?>"
+                    data-resident-type="<?php echo htmlspecialchars($resident['resident_type']); ?>"
+                  >Edit</button>
                   <button class="btn-deactivate" onclick="toggleStatus(<?php echo $resident['user_id']; ?>, '<?php echo $resident['status']; ?>')">
                     <?php echo $resident['status'] == 'active' ? 'Deactivate' : 'Activate'; ?>
                   </button>
@@ -377,6 +388,74 @@ $next_account_number = generateAccountNumber($conn);
         </div>
 
         <button type="submit" class="btn-submit">Create Resident Account</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Resident Modal -->
+  <div id="editResidentModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Edit Resident</h2>
+        <button class="close-modal" onclick="closeEditResidentModal()">×</button>
+      </div>
+
+      <form action="residents_action.php" method="POST">
+        <input type="hidden" name="action" value="update">
+        <input type="hidden" name="user_id" id="edit_user_id">
+
+        <div class="account-number-display">
+          <p>Account Number:</p>
+          <strong id="editAccountNumber"></strong>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="edit_first_name">First Name *</label>
+            <input type="text" id="edit_first_name" name="first_name" required>
+          </div>
+          <div class="form-field">
+            <label for="edit_last_name">Last Name *</label>
+            <input type="text" id="edit_last_name" name="last_name" required>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="edit_email">Email Address *</label>
+          <input type="email" id="edit_email" name="email" required>
+        </div>
+
+        <div class="form-field">
+          <label for="edit_contact_number">Contact Number</label>
+          <input type="tel" id="edit_contact_number" name="contact_number" placeholder="09XXXXXXXXX">
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="edit_unit_number">Unit Number *</label>
+            <input type="text" id="edit_unit_number" name="unit_number" required>
+          </div>
+          <div class="form-field">
+            <label for="edit_resident_type">Resident Type *</label>
+            <select id="edit_resident_type" name="resident_type" required>
+              <option value="owner">Owner</option>
+              <option value="tenant">Tenant</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="edit_lot_number">Lot Number</label>
+            <input type="text" id="edit_lot_number" name="lot_number">
+          </div>
+          <div class="form-field">
+            <label for="edit_block_number">Block Number</label>
+            <input type="text" id="edit_block_number" name="block_number">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit">Save Changes</button>
       </form>
     </div>
   </div>
@@ -571,8 +650,23 @@ $next_account_number = generateAccountNumber($conn);
       modal.classList.remove('show');
     }
 
-    function editResident(userId) {
-      alert('Edit functionality coming soon for user ID: ' + userId);
+    function editResident(button) {
+      const userId = button.getAttribute('data-user-id');
+      document.getElementById('edit_user_id').value = userId;
+      document.getElementById('editAccountNumber').textContent = button.getAttribute('data-account-number');
+      document.getElementById('edit_first_name').value = button.getAttribute('data-first-name');
+      document.getElementById('edit_last_name').value = button.getAttribute('data-last-name');
+      document.getElementById('edit_email').value = button.getAttribute('data-email');
+      document.getElementById('edit_contact_number').value = button.getAttribute('data-contact-number');
+      document.getElementById('edit_unit_number').value = button.getAttribute('data-unit-number');
+      document.getElementById('edit_lot_number').value = button.getAttribute('data-lot-number');
+      document.getElementById('edit_block_number').value = button.getAttribute('data-block-number');
+      document.getElementById('edit_resident_type').value = button.getAttribute('data-resident-type');
+      document.getElementById('editResidentModal').classList.add('show');
+    }
+
+    function closeEditResidentModal() {
+      document.getElementById('editResidentModal').classList.remove('show');
     }
 
     function toggleStatus(userId, currentStatus) {
