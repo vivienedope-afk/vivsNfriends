@@ -14,7 +14,7 @@ require __DIR__ . '/../test_mail/PHPMailer-master/src/SMTP.php';
 class EmailService {
 
     private $from_email = 'maiaaltahoa@gmail.com'; 
-    private $from_name  = 'Maia Alta HOA';
+    private $from_name  = 'SIAA';
     private $db;
 
     public function __construct($db) {
@@ -89,7 +89,7 @@ class EmailService {
             $mail->Host       = 'smtp.gmail.com';
             $mail->SMTPAuth   = true;
             $mail->Username   = 'maiaaltahoa@gmail.com'; 
-            $mail->Password   = 'tkbi ivcm oqxa izza'; // Siguraduhin na App Password ito
+            $mail->Password   = 'wxjn nllj pmka gpns'; // Siguraduhin na App Password ito
             $mail->SMTPSecure = 'tls';
             $mail->Port       = 587;
 
