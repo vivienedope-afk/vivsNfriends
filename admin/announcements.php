@@ -237,6 +237,51 @@ $show_modal = (isset($_GET['action']) && $_GET['action'] === 'new');
         </tbody>
       </table>
     </div>
+
+    <!-- Announcements List -->
+    <?php if ($announcements_result && $announcements_result->num_rows > 0): ?>
+      <div class="announcements-list">
+        <?php while ($announcement = $announcements_result->fetch_assoc()): ?>
+          <div class="announcement-card">
+            <div class="announcement-header">
+              <div>
+                <h3 class="announcement-title"><?php echo htmlspecialchars($announcement['title']); ?></h3>
+              </div>
+              <div class="announcement-badges">
+                <span class="type-badge type-<?php echo strtolower($announcement['announcement_type']); ?>">
+                  <?php echo ucfirst($announcement['announcement_type']); ?>
+                </span>
+                <span class="status-badge status-<?php echo strtolower($announcement['status']); ?>">
+                  <?php echo ucfirst($announcement['status']); ?>
+                </span>
+              </div>
+            </div>
+            <p class="announcement-content"><?php echo htmlspecialchars($announcement['content']); ?></p>
+            <div class="announcement-meta">
+              <div class="announcement-meta-left">
+                <span>📅 <?php echo date('M d, Y', strtotime($announcement['post_date'])); ?></span>
+                <span>✍️ <?php echo htmlspecialchars($announcement['posted_by_name']); ?></span>
+                <?php if ($announcement['expiry_date']): ?>
+                  <span>⏰ Expires: <?php echo date('M d, Y', strtotime($announcement['expiry_date'])); ?></span>
+                <?php endif; ?>
+              </div>
+              <div class="announcement-actions">
+                <button class="btn-small btn-edit" onclick="openEditModal(<?php echo htmlspecialchars(json_encode($announcement)); ?>)">Edit</button>
+                <?php if ($announcement['status'] == 'active'): ?>
+                  <button class="btn-small btn-archive" onclick="archiveAnnouncement(<?php echo $announcement['announcement_id']; ?>)">Archive</button>
+                <?php endif; ?>
+                <button class="btn-small btn-delete" onclick="deleteAnnouncement(<?php echo $announcement['announcement_id']; ?>)">Delete</button>
+              </div>
+            </div>
+          </div>
+        <?php endwhile; ?>
+      </div>
+    <?php else: ?>
+      <div class="no-data">
+        <p style="font-size: 18px; margin-bottom: 10px;">📭 No announcements found</p>
+        <p>There are currently no announcements matching your criteria.</p>
+      </div>
+    <?php endif; ?>
   </main>
 
   <div class="modal" id="createModal">

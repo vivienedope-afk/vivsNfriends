@@ -99,3 +99,4 @@ switch ($action) {
         header('Location: announcements.php');
         exit();
 }
+?>

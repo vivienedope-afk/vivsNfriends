@@ -89,13 +89,17 @@ body {
 }
 
 .form-section {
-  margin-bottom: 30px;
+  margin-bottom: 28px;
+}
+
+.form-section:first-of-type {
+  margin-top: 0;
 }
 
 .form-section h3 {
   font-size: 18px;
   color: #79491b;
-  margin: 0 0 20px 0;
+  margin: 0 0 24px 0;
   padding-bottom: 10px;
   border-bottom: 2px solid rgba(193, 127, 89, 0.2);
 }
@@ -104,17 +108,17 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
   display: block;
   font-weight: 500;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: #2c3e50;
   font-size: 14px;
 }

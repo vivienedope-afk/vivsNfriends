@@ -1,0 +1,10 @@
+[33m4715527[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mveve3[m[33m)[m Worktrees
+[33mf75dc7c[m[33m ([m[1;31morigin/veve3[m[33m)[m chore: apply latest project updates
+[33m00abdc0[m[33m ([m[1;31morigin/veve2[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mveve2[m[33m)[m SMS & Email Notification System Updates Added Debug Panel for SMS/Email Status
+[33mbc60f4a[m Add account application feature with form, processing, and database integration
+[33m4b92a01[m eto na maayos na user side
+[33m80b1c27[m eto na nard sa user side
+[33mf2e4dd8[m Update admin dashboard styles for improved layout and readability
+[33mb4e07a9[m Add: Complete HOA management system with admin & resident features - Updated all pages to gold/tan color scheme - Removed all icons for clean design - Added collaboration guides and documentation - Implemented account number-based authentication - Created admin dashboard with stats and management - Added resident home page with notifications and payments - Plain text passwords for testing (will add hashing later)
+[33m3150423[m Add base styles and layout for sidebar, main content, and dark mode support
+[33m5cee8e3[m Add homepage with right-aligned navigation

@@ -81,3 +81,4 @@ if ($action === 'delete') {
 
 header('Location: bookings.php?error=unsupported');
 exit();
+?>

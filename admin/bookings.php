@@ -368,6 +368,75 @@ $damage_reports = $conn->query($damage_reports_query);
     </div>
   </main>
 
+  <!-- View Details Modal -->
+  <div id="viewModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Booking Details</h2>
+        <button class="close-modal" onclick="closeViewModal()">&times;</button>
+      </div>
+      <div id="viewContent">
+        <!-- Content loaded dynamically -->
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-cancel" onclick="closeViewModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Approve Modal -->
+  <div id="approveModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Approve Booking</h2>
+        <button class="close-modal" onclick="closeApproveModal()">&times;</button>
+      </div>
+      <form method="POST" action="bookings_action.php">
+        <input type="hidden" name="action" value="approve">
+        <input type="hidden" name="booking_id" id="approveBookingId">
+        
+        <div class="form-group">
+          <label for="approveFee">Booking Fee (₱)</label>
+          <input type="number" id="approveFee" name="booking_fee" step="0.01" min="0" value="0" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+        </div>
+
+        <div class="form-group">
+          <label for="approveRemarks">Remarks (Optional)</label>
+          <textarea id="approveRemarks" name="remarks" placeholder="Add any approval remarks..."></textarea>
+        </div>
+
+        <div class="modal-buttons">
+          <button type="button" class="btn-cancel" onclick="closeApproveModal()">Cancel</button>
+          <button type="submit" class="btn-submit">Approve Booking</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Reject Modal -->
+  <div id="rejectModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Reject Booking</h2>
+        <button class="close-modal" onclick="closeRejectModal()">&times;</button>
+      </div>
+      <form method="POST" action="bookings_action.php">
+        <input type="hidden" name="action" value="reject">
+        <input type="hidden" name="booking_id" id="rejectBookingId">
+        
+        <div class="form-group">
+          <label for="rejectRemarks">Reason for Rejection</label>
+          <textarea id="rejectRemarks" name="remarks" placeholder="Please provide a reason for rejecting this booking..." required></textarea>
+        </div>
+
+        <div class="modal-buttons">
+          <button type="button" class="btn-cancel" onclick="closeRejectModal()">Cancel</button>
+          <button type="submit" class="btn-submit" style="background: #e74c3c;">Reject Booking</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
