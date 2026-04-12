@@ -311,6 +311,16 @@ $total_count    = $pending_count + $approved_count + $rejected_count;
       alert(message);
     }
 
+    function parseApiResponse(response) {
+      return response.text().then(text => {
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          throw new Error(text || 'Invalid server response');
+        }
+      });
+    }
+
     /* ─── VIEW MODAL ─── */
     function viewApplication(appId) {
       const modal = document.getElementById('viewApplicationModal');
@@ -336,7 +346,7 @@ $total_count    = $pending_count + $approved_count + $rejected_count;
         function() {
           setConfirmLoading('Approving...');
           fetch('process_application.php?action=approve&id=' + appId)
-            .then(r => r.json())
+            .then(parseApiResponse)
             .then(data => {
               closeConfirmation();
               if (data.success) {
@@ -350,9 +360,9 @@ $total_count    = $pending_count + $approved_count + $rejected_count;
                 showToast(data.message || 'Approval failed.', 'error');
               }
             })
-            .catch(() => {
+            .catch((err) => {
               closeConfirmation();
-              showToast('Network error. Please try again.', 'error');
+              showToast(err.message || 'Network error. Please try again.', 'error');
             });
         }
       );
@@ -380,12 +390,12 @@ $total_count    = $pending_count + $approved_count + $rejected_count;
 
       showConfirmation(
         'Reject Application',
-        'Are you sure you want to REJECT this application? The applicant will be notified.',
+        'Are you sure you want to REJECT this application? This will auto-delete the application record.',
         true,
         function() {
           setConfirmLoading('Rejecting...');
           fetch('process_application.php?action=reject&id=' + appId + '&reason=' + encodeURIComponent(reason))
-            .then(r => r.json())
+            .then(parseApiResponse)
             .then(data => {
               closeConfirmation();
               if (data.success) {
@@ -396,9 +406,9 @@ $total_count    = $pending_count + $approved_count + $rejected_count;
                 showToast(data.message || 'Rejection failed.', 'error');
               }
             })
-            .catch(() => {
+            .catch((err) => {
               closeConfirmation();
-              showToast('Network error. Please try again.', 'error');
+              showToast(err.message || 'Network error. Please try again.', 'error');
             });
         }
       );

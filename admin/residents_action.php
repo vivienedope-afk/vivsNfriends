@@ -1,6 +1,8 @@
 <?php
 require_once('../auth/session_check.php');
 require_once('../config/database.php');
+require_once('../helpers/EmailService.php');
+require_once('../config/EmailVerificationHelper.php');
 requireAdmin();
 
 $conn = getDBConnection();
@@ -59,11 +61,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         $member_stmt = $conn->prepare($member_query);
         $member_stmt->bind_param("ii", $household_id, $user_id);
         $member_stmt->execute();
+
+        // Send resident verification email immediately after creation.
+        $verification_result = sendResidentVerificationEmail(
+            $conn,
+            [
+                'user_id' => $user_id,
+                'first_name' => $first_name,
+                'last_name' => $last_name,
+                'email' => $email,
+            ],
+            $account_number,
+            $default_password,
+            true
+        );
         
         // Commit transaction
         $conn->commit();
         
-        header('Location: residents.php?success=added');
+        $verification_status = (!empty($verification_result['success'])) ? 'sent' : 'failed';
+        header('Location: residents.php?success=added&verification=' . urlencode($verification_status));
         exit();
         
     } catch (Exception $e) {
@@ -217,6 +234,48 @@ if (isset($_GET['action']) && $_GET['action'] == 'archive') {
     }
 }
 
+if (isset($_GET['action']) && $_GET['action'] == 'resend_verification') {
+    $user_id = (int)($_GET['user_id'] ?? 0);
+    if ($user_id <= 0) {
+        header('Location: residents.php?error=failed');
+        exit();
+    }
+
+    $resident_query = "SELECT user_id, account_number, first_name, last_name, email, password, email_verified_at
+                       FROM users
+                       WHERE user_id = ? AND user_role = 'resident'
+                       LIMIT 1";
+    $resident_stmt = $conn->prepare($resident_query);
+    $resident_stmt->bind_param("i", $user_id);
+    $resident_stmt->execute();
+    $resident = $resident_stmt->get_result()->fetch_assoc();
+
+    if (!$resident) {
+        header('Location: residents.php?error=failed');
+        exit();
+    }
+
+    if (!empty($resident['email_verified_at'])) {
+        header('Location: residents.php?error=already_verified');
+        exit();
+    }
+
+    $verification_result = sendResidentVerificationEmail(
+        $conn,
+        $resident,
+        $resident['account_number'],
+        $resident['password'],
+        false
+    );
+
+    if (!empty($verification_result['success'])) {
+        header('Location: residents.php?success=verification_resent');
+    } else {
+        header('Location: residents.php?error=verification_failed');
+    }
+    exit();
+}
+
 if (isset($_GET['action']) && $_GET['action'] == 'delete') {
     $user_id = (int)($_GET['user_id'] ?? 0);
     if ($user_id <= 0) {
@@ -299,4 +358,73 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete') {
 $conn->close();
 header('Location: residents.php');
 exit();
-?>
+
+function sendResidentVerificationEmail($conn, $resident, $account_number, $default_password, $include_credentials = false) {
+    ensureEmailVerificationSchema($conn);
+
+        $token = createResidentVerificationToken($conn, (int)$resident['user_id']);
+        if (!$token) {
+                return ['success' => false, 'message' => 'Failed to generate verification token'];
+        }
+
+        $verification_url = getResidentEmailVerificationUrl($token);
+        $email_svc = new EmailService($conn);
+        $name = trim(($resident['first_name'] ?? '') . ' ' . ($resident['last_name'] ?? ''));
+        $subject = 'MAIA ALTA HOA - Verify Your Resident Account';
+
+        if ($include_credentials) {
+                $body = "
+                        <div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto'>
+                            <div style='background:#c17f59;padding:20px;text-align:center'>
+                                <h2 style='color:white;margin:0'>Maia Alta HOA</h2>
+                            </div>
+                            <div style='padding:24px;background:#fff'>
+                                <p>Dear <strong>{$name}</strong>,</p>
+                                <p>Your resident account has been created. Please verify your email address by clicking the button below:</p>
+                                <p>
+                                    <a href='{$verification_url}' style='display:inline-block;background:#c17f59;color:#fff;padding:12px 18px;text-decoration:none;border-radius:6px'>
+                                        Verify My Email
+                                    </a>
+                                </p>
+                                <div style='background:#f6f8fa;padding:16px;border-left:4px solid #c17f59;margin:16px 0'>
+                                    <p><strong>Account Number:</strong> {$account_number}</p>
+                                    <p><strong>Email:</strong> {$resident['email']}</p>
+                                    <p><strong>Default Password:</strong> <code>{$default_password}</code></p>
+                                </div>
+                                <p style='font-size:12px;color:#666'>If the button does not work, copy this link:<br>{$verification_url}</p>
+                                <p style='color:#e74c3c;font-size:13px'>Please verify your email before requesting support or waiting for further notifications.</p>
+                                <p style='color:#888;font-size:12px'>— Maia Alta HOA Administration</p>
+                            </div>
+                        </div>";
+        } else {
+                $body = "
+                        <div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto'>
+                            <div style='background:#c17f59;padding:20px;text-align:center'>
+                                <h2 style='color:white;margin:0'>Maia Alta HOA</h2>
+                            </div>
+                            <div style='padding:24px;background:#fff'>
+                                <p>Dear <strong>{$name}</strong>,</p>
+                                <p>This is a reminder to verify your resident account email address.</p>
+                                <p>
+                                    <a href='{$verification_url}' style='display:inline-block;background:#c17f59;color:#fff;padding:12px 18px;text-decoration:none;border-radius:6px'>
+                                        Verify My Email
+                                    </a>
+                                </p>
+                                <div style='background:#f6f8fa;padding:16px;border-left:4px solid #c17f59;margin:16px 0'>
+                                    <p><strong>Account Number:</strong> {$account_number}</p>
+                                    <p><strong>Email:</strong> {$resident['email']}</p>
+                                </div>
+                                <p style='font-size:12px;color:#666'>If the button does not work, copy this link:<br>{$verification_url}</p>
+                                <p style='color:#888;font-size:12px'>— Maia Alta HOA Administration</p>
+                            </div>
+                        </div>";
+        }
+
+        $result = $email_svc->sendEmail($resident['email'], $name, $subject, $body, 'verification', (int)$resident['user_id']);
+
+        return [
+                'success' => !empty($result['success']),
+                'verification_url' => $verification_url,
+                'log_id' => $result['log_id'] ?? null,
+        ];
+}

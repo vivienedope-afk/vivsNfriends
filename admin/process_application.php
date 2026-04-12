@@ -8,6 +8,14 @@ requireAdmin();
 // Always return JSON — called via fetch() from applications.php
 header('Content-Type: application/json');
 
+function respondJson($success, $message, $extra = []) {
+    echo json_encode(array_merge([
+        'success' => (bool)$success,
+        'message' => (string)$message
+    ], $extra));
+    exit();
+}
+
 $conn         = getDBConnection();
 $current_user = getCurrentUser();
 ensureEmailVerificationSchema($conn);
@@ -16,8 +24,7 @@ $action = isset($_GET['action']) ? $_GET['action'] : '';
 $app_id = isset($_GET['id'])     ? (int)$_GET['id'] : 0;
 
 if (!$action || !$app_id) {
-    echo json_encode(['success' => false, 'message' => 'Missing action or id']);
-    exit();
+    respondJson(false, 'Missing action or id');
 }
 
 $stmt = $conn->prepare("SELECT * FROM account_applications WHERE application_id = ?");
@@ -26,13 +33,11 @@ $stmt->execute();
 $app = $stmt->get_result()->fetch_assoc();
 
 if (!$app) {
-    echo json_encode(['success' => false, 'message' => 'Application not found']);
-    exit();
+    respondJson(false, 'Application not found');
 }
 
 if ($app['status'] !== 'pending') {
-    echo json_encode(['success' => false, 'message' => 'Application has already been processed']);
-    exit();
+    respondJson(false, 'Application has already been processed');
 }
 
 /* ============================================================
@@ -45,8 +50,7 @@ if ($action === 'approve') {
     $dup->bind_param("s", $app['email']);
     $dup->execute();
     if ($dup->get_result()->fetch_assoc()) {
-        echo json_encode(['success' => false, 'message' => 'An account with this email already exists']);
-        exit();
+        respondJson(false, 'An account with this email already exists');
     }
 
     $account_number = 'HOA-' . strtoupper(substr(md5(uniqid()), 0, 8));
@@ -102,9 +106,7 @@ if ($action === 'approve') {
         // 6b. Send credentials in a separate email
         sendCredentialsEmail($conn, $app, $account_number, $default_password);
 
-        echo json_encode([
-            'success' => true,
-            'message' => 'Application approved successfully.',
+        respondJson(true, 'Application approved successfully.', [
             'account_number' => $account_number,
             'default_password' => $default_password
         ]);
@@ -112,7 +114,7 @@ if ($action === 'approve') {
     } catch (Exception $e) {
         $conn->rollback();
         error_log("Approve error: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+        respondJson(false, 'Database error: ' . $e->getMessage());
     }
 
     $conn->close();
@@ -126,22 +128,35 @@ if ($action === 'reject') {
 
     $reason = isset($_GET['reason']) ? trim(urldecode($_GET['reason'])) : '';
 
-    $upd = $conn->prepare("UPDATE account_applications SET status = 'rejected', rejection_reason = ?, reviewed_by = ?, reviewed_at = NOW() WHERE application_id = ?");
-    $upd->bind_param("sii", $reason, $current_user['user_id'], $app_id);
+    $conn->begin_transaction();
+    try {
+        // Keep a quick audit trail before auto-delete.
+        $upd = $conn->prepare("UPDATE account_applications SET status = 'rejected', rejection_reason = ?, reviewed_by = ?, reviewed_at = NOW() WHERE application_id = ?");
+        $upd->bind_param("sii", $reason, $current_user['user_id'], $app_id);
+        if (!$upd->execute()) {
+            throw new Exception('Failed to mark application as rejected.');
+        }
 
-    if ($upd->execute()) {
-        // Correct function name from your actual NotificationHelper.php
-        notifyApplicantApplicationStatus($conn, $app_id, 'rejected', $reason);
-        echo json_encode(['success' => true, 'message' => 'Application rejected.']);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to update application. Please try again.']);
+        // Auto-delete rejected application as requested.
+        $del = $conn->prepare("DELETE FROM account_applications WHERE application_id = ?");
+        $del->bind_param("i", $app_id);
+        if (!$del->execute()) {
+            throw new Exception('Failed to delete rejected application.');
+        }
+
+        $conn->commit();
+        respondJson(true, 'Application rejected and deleted successfully.');
+    } catch (Exception $e) {
+        $conn->rollback();
+        error_log('Reject/Delete error: ' . $e->getMessage());
+        respondJson(false, 'Failed to reject and delete application.');
     }
 
     $conn->close();
     exit();
 }
 
-echo json_encode(['success' => false, 'message' => 'Invalid action']);
+respondJson(false, 'Invalid action');
 $conn->close();
 
 /* ============================================================

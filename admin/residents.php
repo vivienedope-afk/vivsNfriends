@@ -212,6 +212,11 @@ $next_account_number = generateAccountNumber($conn);
       background: #e74c3c;
       color: white;
     }
+
+    .btn-verify {
+      background: #27ae60;
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -248,7 +253,16 @@ $next_account_number = generateAccountNumber($conn);
     <?php if (isset($_GET['success'])): ?>
       <div class="alert alert-success">
         <?php 
-          if ($_GET['success'] == 'added') echo 'Resident account created successfully!';
+          if ($_GET['success'] == 'added') {
+            echo 'Resident account created successfully!';
+            if (isset($_GET['verification']) && $_GET['verification'] === 'sent') {
+              echo ' Verification email sent.';
+            } elseif (isset($_GET['verification']) && $_GET['verification'] === 'failed') {
+              echo ' Resident created, but verification email was not sent.';
+            }
+          }
+          elseif ($_GET['success'] == 'verification_sent') echo 'Verification email sent successfully.';
+          elseif ($_GET['success'] == 'verification_resent') echo 'Verification email resent successfully.';
            elseif ($_GET['success'] == 'updated') echo 'Resident information updated successfully!';
            elseif ($_GET['success'] == 'archived') echo 'Resident account archived successfully.';
            elseif ($_GET['success'] == 'deleted') echo 'Resident account deleted successfully.';
@@ -262,6 +276,8 @@ $next_account_number = generateAccountNumber($conn);
           if ($_GET['error'] == 'exists') echo 'Account number or email already exists!';
           elseif ($_GET['error'] == 'failed') echo 'Failed to create account. Please try again.';
            elseif ($_GET['error'] == 'has_records') echo 'Cannot delete resident with existing dues or booking records. Use Archive instead.';
+           elseif ($_GET['error'] == 'already_verified') echo 'This resident email is already verified.';
+           elseif ($_GET['error'] == 'verification_failed') echo 'Failed to send verification email. Please try again.';
         ?>
       </div>
     <?php endif; ?>
@@ -293,6 +309,9 @@ $next_account_number = generateAccountNumber($conn);
                   <?php echo htmlspecialchars($resident['email']); ?><br>
                   <?php if (!empty($resident['email_verified_at'])): ?>
                     <small style="color:#1e8449;font-weight:600;">Verified</small>
+                  <?php elseif (!empty($resident['email_verification_sent_at'])): ?>
+                    <small style="color:#b9770e;font-weight:600;">Pending verification</small><br>
+                    <small style="color:#666;">Sent: <?php echo date('M d, Y g:i A', strtotime($resident['email_verification_sent_at'])); ?></small>
                   <?php else: ?>
                     <small style="color:#b9770e;font-weight:600;">Not Verified</small>
                   <?php endif; ?>
@@ -317,6 +336,9 @@ $next_account_number = generateAccountNumber($conn);
                   <button class="btn-deactivate" onclick="toggleStatus(<?php echo $resident['user_id']; ?>, '<?php echo $resident['status']; ?>')">
                     <?php echo $resident['status'] == 'active' ? 'Deactivate' : 'Activate'; ?>
                   </button>
+                  <?php if (empty($resident['email_verified_at'])): ?>
+                    <button class="btn-verify" onclick="resendVerification(<?php echo $resident['user_id']; ?>)">Resend Verification</button>
+                  <?php endif; ?>
                    <button class="btn-deactivate" onclick="archiveResident(<?php echo $resident['user_id']; ?>)">Archive</button>
                    <button class="btn-deactivate" style="background:#dc3545;" onclick="deleteResident(<?php echo $resident['user_id']; ?>)">Delete</button>
                 </td>
@@ -678,6 +700,12 @@ $next_account_number = generateAccountNumber($conn);
       }
 
       window.location.href = 'edit_resident.php?user_id=' + encodeURIComponent(userId);
+    }
+
+    function resendVerification(userId) {
+      if (!userId) return;
+      if (!confirm('Resend the resident verification email?')) return;
+      window.location.href = 'residents_action.php?action=resend_verification&user_id=' + encodeURIComponent(userId);
     }
 
     function toggleStatus(userId, currentStatus) {

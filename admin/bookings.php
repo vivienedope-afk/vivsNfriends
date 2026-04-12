@@ -281,9 +281,7 @@ $damage_reports = $conn->query($damage_reports_query);
                   <?php if ($row['status'] !== 'cancelled' && $row['status'] !== 'rejected'): ?>
                     <button class="btn btn-secondary" onclick="applyAction(<?php echo (int)$row['booking_id']; ?>, 'archive')">Archive</button>
                   <?php endif; ?>
-                  <?php if ($row['status'] === 'cancelled' || $row['status'] === 'rejected'): ?>
-                    <button class="btn btn-danger" onclick="applyAction(<?php echo (int)$row['booking_id']; ?>, 'delete')">Delete</button>
-                  <?php endif; ?>
+                  <button class="btn btn-danger" onclick="applyAction(<?php echo (int)$row['booking_id']; ?>, 'delete')">Delete</button>
                 </td>
               </tr>
             <?php endwhile; ?>

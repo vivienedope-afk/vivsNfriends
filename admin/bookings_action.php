@@ -57,7 +57,7 @@ if ($action === 'mark_paid' || $action === 'mark_unpaid') {
 }
 
 if ($action === 'delete') {
-    $check_sql = "SELECT status, payment_status FROM facility_bookings WHERE booking_id = ? LIMIT 1";
+    $check_sql = "SELECT booking_id FROM facility_bookings WHERE booking_id = ? LIMIT 1";
     $check_stmt = $conn->prepare($check_sql);
     $check_stmt->bind_param('i', $booking_id);
     $check_stmt->execute();
@@ -66,11 +66,6 @@ if ($action === 'delete') {
 
     if (!$booking) {
         header('Location: bookings.php?error=invalid');
-        exit();
-    }
-
-    if ($booking['status'] === 'approved' && $booking['payment_status'] === 'paid') {
-        header('Location: bookings.php?error=delete_blocked');
         exit();
     }
 

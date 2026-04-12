@@ -460,7 +460,14 @@ while ($maint = $maintenance_result->fetch_assoc()) {
         method: 'POST',
         body: formData
       })
-      .then(response => response.json())
+      .then(response => response.text())
+      .then(text => {
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          throw new Error(text || 'Unexpected server response');
+        }
+      })
       .then(data => {
         if (data.success) {
           alert('Reservation submitted successfully!');
@@ -471,7 +478,7 @@ while ($maint = $maintenance_result->fetch_assoc()) {
       })
       .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while submitting the reservation.');
+        alert('Error: ' + (error.message || 'An error occurred while submitting the reservation.'));
       });
     });
 
