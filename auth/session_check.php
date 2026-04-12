@@ -23,10 +23,32 @@ function isResident() {
     return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'resident';
 }
 
+// Enforce route-based access for all protected pages using this middleware.
+$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+$is_admin_route = strpos($request_uri, '/admin/') !== false;
+
+if ($is_admin_route && !isAdmin()) {
+    header('Location: ../home.php?error=unauthorized');
+    exit();
+}
+
+if (!$is_admin_route && isAdmin()) {
+    header('Location: admin/dashboard.php');
+    exit();
+}
+
 // Function to require admin access
 function requireAdmin() {
     if (!isAdmin()) {
         header('Location: ../home.php?error=unauthorized');
+        exit();
+    }
+}
+
+// Function to require resident access
+function requireResident() {
+    if (!isResident()) {
+        header('Location: admin/dashboard.php?error=unauthorized');
         exit();
     }
 }

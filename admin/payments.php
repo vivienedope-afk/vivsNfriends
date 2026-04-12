@@ -6,6 +6,13 @@ requireAdmin();
 $conn = getDBConnection();
 $current_user = getCurrentUser();
 
+function ensureMonthlyDuesMetaColumns($conn) {
+  $conn->query("ALTER TABLE monthly_dues ADD COLUMN IF NOT EXISTS title VARCHAR(150) NULL AFTER due_year");
+  $conn->query("ALTER TABLE monthly_dues ADD COLUMN IF NOT EXISTS description TEXT NULL AFTER title");
+}
+
+ensureMonthlyDuesMetaColumns($conn);
+
 // Get filter parameters
 $status_filter = isset($_GET['status']) ? $_GET['status'] : 'all';
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -183,7 +190,17 @@ $conn->query($update_overdue);
       <div class="alert alert-success">
         <?php
           if ($_GET['success'] == 'dues_added') echo 'Monthly dues added successfully.';
-          elseif ($_GET['success'] == 'payment_recorded') echo 'Payment recorded successfully.';
+          elseif ($_GET['success'] == 'payment_recorded') {
+            if (isset($_GET['sms']) && $_GET['sms'] === 'sent') {
+              echo 'Payment recorded successfully. SMS sent successfully.';
+            } elseif (isset($_GET['sms']) && $_GET['sms'] === 'queued') {
+              echo 'Payment recorded successfully. SMS accepted by gateway and queued for sending.';
+            } elseif (isset($_GET['sms']) && $_GET['sms'] === 'failed') {
+              echo 'Payment recorded successfully, but SMS was not sent.';
+            } else {
+              echo 'Payment recorded successfully.';
+            }
+          }
           elseif ($_GET['success'] == 'dues_updated') echo 'Dues updated successfully.';
           elseif ($_GET['success'] == 'payment_verified') echo 'Payment verified successfully.';
           elseif ($_GET['success'] == 'payment_archived') echo 'Payment archived successfully.';
@@ -287,6 +304,7 @@ $conn->query($update_overdue);
             <tr>
               <th>Unit</th>
               <th>Owner</th>
+              <th>Due Details</th>
               <th>Due Period</th>
               <th>Due Date</th>
               <th>Amount</th>
@@ -300,6 +318,12 @@ $conn->query($update_overdue);
               <tr>
                 <td><strong><?php echo htmlspecialchars($due['unit_number']); ?></strong></td>
                 <td><?php echo htmlspecialchars($due['owner_name'] ?? 'N/A'); ?></td>
+                <td>
+                  <div style="font-weight:600; color:#333;"><?php echo htmlspecialchars($due['title'] ?? 'Monthly HOA Dues'); ?></div>
+                  <div style="font-size:12px; color:#777; margin-top:3px;">
+                    <?php echo htmlspecialchars($due['description'] ?? 'No description provided.'); ?>
+                  </div>
+                </td>
                 <td><?php echo htmlspecialchars($due['due_month']) . ' ' . $due['due_year']; ?></td>
                 <td><?php echo date('M d, Y', strtotime($due['due_date'])); ?></td>
                 <td><strong>₱<?php echo number_format($due['amount'], 2); ?></strong></td>
@@ -327,7 +351,7 @@ $conn->query($update_overdue);
                 </td>
                 <td>
                   <?php if ($due['status'] == 'unpaid' || $due['status'] == 'overdue'): ?>
-                    <button class="action-btn btn-record" onclick="openRecordPaymentModal(<?php echo $due['dues_id']; ?>, '<?php echo htmlspecialchars($due['unit_number']); ?>', <?php echo $due['amount']; ?>, '<?php echo $due['due_month'] . ' ' . $due['due_year']; ?>')">
+                    <button class="action-btn btn-record" onclick="openRecordPaymentModal(<?php echo $due['dues_id']; ?>, '<?php echo htmlspecialchars($due['unit_number'], ENT_QUOTES); ?>', <?php echo $due['amount']; ?>, '<?php echo htmlspecialchars($due['due_month'] . ' ' . $due['due_year'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($due['title'] ?? 'Monthly HOA Dues', ENT_QUOTES); ?>')">
                       <i class="fas fa-money-bill"></i> Record Payment
                     </button>
                   <?php elseif ($due['payment_id'] && !$due['verified_at']): ?>
@@ -397,6 +421,14 @@ $conn->query($update_overdue);
             ?>
           </select>
         </div>
+        <div class="form-group">
+          <label>Title *</label>
+          <input type="text" name="title" maxlength="150" required placeholder="e.g. Monthly HOA Dues">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea name="description" placeholder="e.g. Includes security, garbage collection, and common area maintenance."></textarea>
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label>Month *</label>
@@ -454,6 +486,10 @@ $conn->query($update_overdue);
           <span class="info-value" id="payment_period"></span>
         </div>
         <div class="info-row">
+          <span class="info-label">Title:</span>
+          <span class="info-value" id="payment_title"></span>
+        </div>
+        <div class="info-row">
           <span class="info-label">Amount Due:</span>
           <span class="info-value" id="payment_amount_due"></span>
         </div>
@@ -501,10 +537,11 @@ $conn->query($update_overdue);
       document.getElementById('addDuesModal').style.display = 'none';
     }
     
-    function openRecordPaymentModal(duesId, unit, amount, period) {
+    function openRecordPaymentModal(duesId, unit, amount, period, title) {
       document.getElementById('payment_dues_id').value = duesId;
       document.getElementById('payment_unit').textContent = unit;
       document.getElementById('payment_period').textContent = period;
+      document.getElementById('payment_title').textContent = title || 'Monthly HOA Dues';
       document.getElementById('payment_amount_due').textContent = '₱' + parseFloat(amount).toFixed(2);
       document.getElementById('amount_paid_input').value = parseFloat(amount).toFixed(2);
       document.getElementById('recordPaymentModal').style.display = 'block';

@@ -1,6 +1,8 @@
 <?php
 require_once('config/database.php');
 require_once('config/NotificationHelper.php');
+require_once('config/PreApplicationEmailVerification.php');
+require_once('config/EmailVerificationHelper.php');
 
 header('Content-Type: text/html; charset=UTF-8');
 
@@ -10,6 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $conn = getDBConnection();
+ensurePreApplicationVerificationSchema($conn);
+ensureEmailVerificationSchema($conn);
 
 // Get and sanitize form data
 $first_name = trim($_POST['first_name'] ?? '');
@@ -31,6 +35,12 @@ if (empty($first_name) || empty($last_name) || empty($email) || empty($contact_n
 // Validate email format
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     header('Location: apply_account.php?error=invalid_email');
+    exit();
+}
+
+// Require pre-submit email verification
+if (!hasRecentVerifiedEmail($conn, $email, 30)) {
+    header('Location: apply_account.php?error=email_not_verified');
     exit();
 }
 
@@ -102,8 +112,8 @@ if (isset($_FILES['id_proof']) && $_FILES['id_proof']['error'] === UPLOAD_ERR_OK
 
 // Insert application into database
 $insert_query = "INSERT INTO account_applications 
-                (first_name, last_name, email, contact_number, unit_number, lot_number, block_number, resident_type, id_proof_path, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')";
+                (first_name, last_name, email, contact_number, unit_number, lot_number, block_number, resident_type, id_proof_path, email_verified_at, status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')";
 
 $insert_stmt = $conn->prepare($insert_query);
 $insert_stmt->bind_param(
@@ -120,6 +130,8 @@ $insert_stmt->bind_param(
 );
 
 if ($insert_stmt->execute()) {
+    consumeEmailVerification($conn, $email);
+
     // Notify admin of the new application
     $application_id = $conn->insert_id;
     if (!notifyAdminNewApplication($conn, $application_id)) {

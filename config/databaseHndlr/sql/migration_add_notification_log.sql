@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS notification_log (
     user_id INT NOT NULL,
     notification_type ENUM('email', 'sms', 'push') DEFAULT 'email',
     subject VARCHAR(255) NOT NULL,
-    status ENUM('sent', 'failed', 'skipped') DEFAULT 'sent',
+    status ENUM('queued', 'sent', 'failed', 'skipped') DEFAULT 'queued',
     error_message TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,

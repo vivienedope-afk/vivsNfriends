@@ -6,6 +6,13 @@ requireAdmin();
 $conn = getDBConnection();
 $current_user = getCurrentUser();
 
+function ensureMonthlyDuesMetaColumns($conn) {
+  $conn->query("ALTER TABLE monthly_dues ADD COLUMN IF NOT EXISTS title VARCHAR(150) NULL AFTER due_year");
+  $conn->query("ALTER TABLE monthly_dues ADD COLUMN IF NOT EXISTS description TEXT NULL AFTER title");
+}
+
+ensureMonthlyDuesMetaColumns($conn);
+
 $dues_id = (int)($_GET['id'] ?? 0);
 $dues = null;
 
@@ -62,6 +69,14 @@ if ($dues_id > 0) {
             <div class="full">
               <label>Resident</label>
               <input type="text" value="<?php echo htmlspecialchars($dues['unit_number'] . ' - ' . ($dues['owner_name'] ?? 'N/A')); ?>" readonly>
+            </div>
+            <div>
+              <label>Title</label>
+              <input type="text" name="title" maxlength="150" value="<?php echo htmlspecialchars($dues['title'] ?? 'Monthly HOA Dues'); ?>" required>
+            </div>
+            <div class="full">
+              <label>Description</label>
+              <input type="text" name="description" value="<?php echo htmlspecialchars($dues['description'] ?? ''); ?>" placeholder="Optional description for this due.">
             </div>
             <div>
               <label>Due Month</label>

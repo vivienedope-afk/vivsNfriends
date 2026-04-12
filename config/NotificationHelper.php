@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/../helpers/EmailService.php';
 require_once __DIR__ . '/../helpers/SmsService.php';
+require_once __DIR__ . '/EmailVerificationHelper.php';
 
 /* ============================================================
    HELPER: Get admin email
@@ -60,10 +61,73 @@ function getResidentByHousehold($conn, $household_id) {
     return $result->fetch_assoc();
 }
 
+  /* ============================================================
+     HELPER: Get resident by household with fallbacks
+     ============================================================ */
+  function getResidentByHouseholdWithFallback($conn, $household_id) {
+    $resident = getResidentByHousehold($conn, $household_id);
+    if ($resident) {
+      return $resident;
+    }
+
+    $fallback_sql = "SELECT u.user_id, u.email, u.first_name, u.last_name, u.contact_number,
+                COALESCE(np.email_notifications, 1) AS email_on,
+                COALESCE(np.sms_notifications, 0) AS sms_on,
+                h.unit_number
+             FROM households h
+             INNER JOIN household_members hm ON h.household_id = hm.household_id
+             INNER JOIN users u ON hm.user_id = u.user_id
+             LEFT JOIN notification_preferences np ON u.user_id = np.user_id
+             WHERE h.household_id = ? AND u.user_role = 'resident'
+             ORDER BY hm.is_primary DESC, hm.member_id ASC
+             LIMIT 1";
+    $fallback_stmt = $conn->prepare($fallback_sql);
+    if ($fallback_stmt) {
+      $fallback_stmt->bind_param("i", $household_id);
+      $fallback_stmt->execute();
+      $resident = $fallback_stmt->get_result()->fetch_assoc();
+      if ($resident) {
+        return $resident;
+      }
+    }
+
+    $owner_sql = "SELECT u.user_id, u.email, u.first_name, u.last_name, u.contact_number,
+               COALESCE(np.email_notifications, 1) AS email_on,
+               COALESCE(np.sms_notifications, 0) AS sms_on,
+               h.unit_number
+            FROM households h
+            INNER JOIN users u ON h.owner_id = u.user_id
+            LEFT JOIN notification_preferences np ON u.user_id = np.user_id
+            WHERE h.household_id = ? AND u.user_role = 'resident'
+            LIMIT 1";
+    $owner_stmt = $conn->prepare($owner_sql);
+    if ($owner_stmt) {
+      $owner_stmt->bind_param("i", $household_id);
+      $owner_stmt->execute();
+      $resident = $owner_stmt->get_result()->fetch_assoc();
+      if ($resident) {
+        return $resident;
+      }
+    }
+
+    return null;
+  }
+
 /* ============================================================
    HELPER: Log to notification_log
    ============================================================ */
 function logNotification($conn, $user_id, $type, $subject, $status, $error = null) {
+    static $schemaChecked = false;
+    if (!$schemaChecked) {
+        $conn->query("ALTER TABLE notification_log MODIFY COLUMN status ENUM('queued', 'sent', 'failed', 'skipped') DEFAULT 'queued'");
+        $schemaChecked = true;
+    }
+
+    $allowedStatuses = ['queued', 'sent', 'failed', 'skipped'];
+    if (!in_array($status, $allowedStatuses, true)) {
+        $status = 'failed';
+    }
+
     $sql = "INSERT INTO notification_log (user_id, notification_type, subject, status, error_message)
             VALUES (?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
@@ -71,6 +135,65 @@ function logNotification($conn, $user_id, $type, $subject, $status, $error = nul
         $stmt->bind_param("issss", $user_id, $type, $subject, $status, $error);
         $stmt->execute();
     }
+}
+
+function buildSmsLogMeta($sms_result) {
+    $meta = [
+      'status' => 'failed',
+      'detail' => 'SMS failed'
+    ];
+
+    if (!is_array($sms_result)) {
+      return $meta;
+    }
+
+    $providerState = strtolower(trim((string)($sms_result['provider_state'] ?? '')));
+    $providerMessage = trim((string)($sms_result['provider_message'] ?? ($sms_result['message'] ?? '')));
+    $providerMessageId = trim((string)($sms_result['provider_message_id'] ?? ''));
+
+    if (!empty($sms_result['success'])) {
+      if (in_array($providerState, ['sent', 'delivered', 'success'], true)) {
+        $meta['status'] = 'sent';
+      } else {
+        $meta['status'] = 'queued';
+      }
+
+      $parts = [];
+      if ($providerState !== '') {
+        $parts[] = 'provider_state=' . $providerState;
+      }
+      if ($providerMessageId !== '') {
+        $parts[] = 'message_id=' . $providerMessageId;
+      }
+      if ($providerMessage !== '') {
+        $parts[] = $providerMessage;
+      }
+
+      $meta['detail'] = empty($parts) ? null : implode(' | ', $parts);
+      return $meta;
+    }
+
+    $errorMessage = trim((string)($sms_result['error'] ?? ''));
+    if ($errorMessage === '') {
+      $errorMessage = trim((string)($sms_result['message'] ?? 'SMS failed'));
+    }
+
+    $parts = ['provider_state=failed'];
+    if ($providerMessageId !== '') {
+      $parts[] = 'message_id=' . $providerMessageId;
+    }
+    if ($errorMessage !== '') {
+      $parts[] = $errorMessage;
+    }
+
+    $meta['detail'] = implode(' | ', $parts);
+    return $meta;
+}
+
+function logSmsNotification($conn, $user_id, $subject, $sms_result) {
+    $meta = buildSmsLogMeta($sms_result);
+    logNotification($conn, $user_id, 'sms', $subject, $meta['status'], $meta['detail']);
+    return $meta;
 }
 
 /* ============================================================
@@ -111,7 +234,7 @@ function notifyAdminNewBooking($conn, $booking_id) {
               <tr><td style='padding:8px;background:#f9f9f9;font-weight:bold'>Time</td><td style='padding:8px'>{$start} - {$end}</td></tr>
               <tr><td style='padding:8px;background:#f9f9f9;font-weight:bold'>Purpose</td><td style='padding:8px'>{$booking['purpose']}</td></tr>
              </table>
-            <p><a href='http://localhost/vivsNfriends-emailsms/admin/bookings.php' style='background:#c17f59;color:white;padding:10px 20px;text-decoration:none;border-radius:5px'>Review Booking</a></p>
+            <p><a href='http://localhost/lokongTo/vivsNfriends/admin/bookings.php' style='background:#c17f59;color:white;padding:10px 20px;text-decoration:none;border-radius:5px'>Review Booking</a></p>
           </div>
         </div>";
     
@@ -132,7 +255,7 @@ function notifyResidentBookingStatus($conn, $booking_id) {
     $booking = $stmt->get_result()->fetch_assoc();
     if (!$booking) return false;
 
-    $resident = getResidentByHousehold($conn, $booking['household_id']);
+    $resident = getResidentByHouseholdWithFallback($conn, (int)$booking['household_id']);
     if (!$resident) return false;
 
     $email_svc = getEmailService($conn);
@@ -180,7 +303,7 @@ function notifyResidentBookingStatus($conn, $booking_id) {
     if ($resident['sms_on'] && !empty($resident['contact_number'])) {
         $sms_result = $sms_svc->sendSms($resident['contact_number'], $sms_msg);
         $sms_ok = $sms_result['success'];
-        logNotification($conn, $resident['user_id'], 'sms', $subject, $sms_ok ? 'sent' : 'failed', $sms_ok ? null : ($sms_result['error'] ?? 'SMS failed'));
+      logSmsNotification($conn, $resident['user_id'], $subject, $sms_result);
     }
 
     return ['email' => $email_ok, 'sms' => $sms_ok];
@@ -222,6 +345,60 @@ function notifyAdminNewApplication($conn, $application_id) {
         </div>";
     
     return $email_svc->sendEmail($admin_email, 'Admin', $subject, $body, 'application', null, $application_id);
+}
+
+/* ============================================================
+   3B. NOTIFY APPLICANT THAT APPLICATION IS RECEIVED (VERIFICATION FLOW)
+   ============================================================ */
+function notifyApplicantVerificationReceived($conn, $application_id) {
+  ensureEmailVerificationSchema($conn);
+
+    $sql = "SELECT * FROM account_applications WHERE application_id = ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) return false;
+
+    $stmt->bind_param("i", $application_id);
+    $stmt->execute();
+    $app = $stmt->get_result()->fetch_assoc();
+    if (!$app || empty($app['email'])) return false;
+
+    $email_svc = getEmailService($conn);
+    $name = trim($app['first_name'] . ' ' . $app['last_name']);
+
+    $token = createApplicationVerificationToken($conn, $application_id);
+    if (!$token) {
+      return false;
+    }
+    $verification_url = getEmailVerificationUrl($token);
+
+    $subject = "MAIA ALTA HOA - Application Received (Verification in Progress)";
+
+    $body = "
+        <div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto'>
+          <div style='background:#2c3e50;padding:20px;text-align:center'>
+            <h2 style='color:white;margin:0'>Maia Alta HOA</h2>
+          </div>
+          <div style='padding:24px;background:#fff'>
+            <p>Dear <strong>{$name}</strong>,</p>
+            <p>We received your account application and your details are now under verification.</p>
+            <p>Please verify your email address by clicking the button below:</p>
+            <p>
+              <a href='{$verification_url}' style='display:inline-block;background:#2c3e50;color:#fff;padding:10px 18px;text-decoration:none;border-radius:6px'>
+                Verify My Email
+              </a>
+            </p>
+            <div style='background:#f6f8fa;padding:16px;border-left:4px solid #2c3e50;margin:16px 0'>
+              <p><strong>Application ID:</strong> {$application_id}</p>
+              <p><strong>Unit Number:</strong> {$app['unit_number']}</p>
+              <p><strong>Status:</strong> Pending Verification</p>
+            </div>
+            <p style='font-size:12px;color:#666'>If button does not work, copy this link:<br>{$verification_url}</p>
+            <p>You will receive another email once your application is approved or rejected.</p>
+            <p style='color:#888;font-size:12px'>- Maia Alta HOA Administration</p>
+          </div>
+        </div>";
+
+    return $email_svc->sendEmail($app['email'], $name, $subject, $body, 'verification', null, $application_id);
 }
 
 /* ============================================================
@@ -281,7 +458,7 @@ function notifyApplicantApplicationStatus($conn, $application_id, $status, $reje
     if (!empty($app['contact_number'])) {
         $sms_result = $sms_svc->sendSms($app['contact_number'], $sms_msg);
         $sms_ok = $sms_result['success'];
-        logNotification($conn, null, 'sms', $subject, $sms_ok ? 'sent' : 'failed', $sms_ok ? null : ($sms_result['error'] ?? 'SMS failed'));
+      logSmsNotification($conn, null, $subject, $sms_result);
     }
     
     return ['email' => $email_ok, 'sms' => $sms_ok];
@@ -298,7 +475,7 @@ function sendDueReminder($conn, $dues_id, $reminder_type = 'due_date') {
     $due = $stmt->get_result()->fetch_assoc();
     if (!$due) return false;
     
-    $resident = getResidentByHousehold($conn, $due['household_id']);
+    $resident = getResidentByHouseholdWithFallback($conn, (int)$due['household_id']);
     if (!$resident) return false;
     
     $email_svc = getEmailService($conn);
@@ -333,11 +510,132 @@ function sendDueReminder($conn, $dues_id, $reminder_type = 'due_date') {
     if ($resident['sms_on'] && !empty($resident['contact_number'])) {
         $sms_result = $sms_svc->sendSms($resident['contact_number'], $sms_msg);
         $sms_ok = $sms_result['success'];
-        logNotification($conn, $resident['user_id'], 'sms', $subject, $sms_ok ? 'sent' : 'failed', $sms_ok ? null : ($sms_result['error'] ?? 'SMS failed'));
+      logSmsNotification($conn, $resident['user_id'], $subject, $sms_result);
     }
     
     return ['email' => $email_ok, 'sms' => $sms_ok];
 }
+
+  /* ============================================================
+     5A. SEND NEW DUE POSTED NOTIFICATION (SMS)
+     ============================================================ */
+  function sendNewDuePostedSms($conn, $dues_id) {
+    $sql = "SELECT md.*, h.unit_number
+        FROM monthly_dues md
+        INNER JOIN households h ON md.household_id = h.household_id
+        WHERE md.dues_id = ?
+        LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) return false;
+
+    $stmt->bind_param("i", $dues_id);
+    $stmt->execute();
+    $due = $stmt->get_result()->fetch_assoc();
+    if (!$due) return false;
+
+    $resident = getResidentByHouseholdWithFallback($conn, (int)$due['household_id']);
+    if (!$resident) return false;
+    if (empty($resident['contact_number'])) {
+      return ['sms' => false, 'reason' => 'no_contact_number'];
+    }
+
+    $sms_svc = getSmsService($conn);
+
+    $amount = number_format((float)$due['amount'], 2);
+    $dueDate = date('M d, Y', strtotime($due['due_date']));
+    $period = $due['due_month'] . ' ' . $due['due_year'];
+    $dueTitle = trim((string)($due['title'] ?? ''));
+    if ($dueTitle === '') {
+      $dueTitle = 'Monthly HOA Dues';
+    }
+    $dueDescription = trim((string)($due['description'] ?? ''));
+
+    $sms_msg = "MAIA ALTA HOA: {$dueTitle}";
+    if ($dueDescription !== '') {
+      $sms_msg .= " ({$dueDescription})";
+    }
+    $sms_msg .= " posted for {$period}. Amount: PHP {$amount}. Due date: {$dueDate}.";
+    $sms_msg = substr($sms_msg, 0, 160);
+
+    $sms_result = $sms_svc->sendSms($resident['contact_number'], $sms_msg, 'billing');
+    $sms_ok = !empty($sms_result['success']);
+    $sms_meta = buildSmsLogMeta($sms_result);
+
+    $subject = "MAIA ALTA HOA - New Due Posted: {$period}";
+    logNotification(
+      $conn,
+      (int)$resident['user_id'],
+      'sms',
+      $subject,
+      $sms_meta['status'],
+      $sms_meta['detail']
+    );
+
+    return ['sms' => $sms_ok, 'status' => $sms_meta['status'], 'detail' => $sms_meta['detail']];
+  }
+
+  /* ============================================================
+     5B. SEND DUE PAYMENT SUCCESS CONFIRMATION (SMS)
+     ============================================================ */
+  function sendDuePaymentSuccessSms($conn, $dues_id, $amount_paid, $payment_date, $payment_method = null) {
+    $sql = "SELECT md.*, h.unit_number
+        FROM monthly_dues md
+        INNER JOIN households h ON md.household_id = h.household_id
+        WHERE md.dues_id = ?
+        LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) return false;
+
+    $stmt->bind_param("i", $dues_id);
+    $stmt->execute();
+    $due = $stmt->get_result()->fetch_assoc();
+    if (!$due) return false;
+
+    $resident = getResidentByHouseholdWithFallback($conn, (int)$due['household_id']);
+
+    if (!$resident) {
+      return false;
+    }
+
+    if (empty($resident['contact_number'])) {
+      return ['sms' => false, 'reason' => 'no_contact_number'];
+    }
+
+    $sms_svc = getSmsService($conn);
+
+    $amount = number_format((float)$amount_paid, 2);
+    $datePaid = date('M d, Y', strtotime($payment_date));
+    $period = $due['due_month'] . ' ' . $due['due_year'];
+    $dueTitle = trim((string)($due['title'] ?? ''));
+    if ($dueTitle === '') {
+      $dueTitle = 'Monthly HOA Dues';
+    }
+    $dueDescription = trim((string)($due['description'] ?? ''));
+    $methodText = !empty($payment_method) ? (" via " . strtoupper($payment_method)) : '';
+
+    $sms_msg = "MAIA ALTA HOA: Payment received for {$dueTitle}";
+    if ($dueDescription !== '') {
+      $sms_msg .= " ({$dueDescription})";
+    }
+    $sms_msg .= " {$period}. PHP {$amount} on {$datePaid}{$methodText}. Thank you.";
+    $sms_msg = substr($sms_msg, 0, 160);
+
+    $sms_result = $sms_svc->sendSms($resident['contact_number'], $sms_msg, 'billing');
+    $sms_ok = !empty($sms_result['success']);
+    $sms_meta = buildSmsLogMeta($sms_result);
+
+    $subject = "MAIA ALTA HOA - Payment Received: {$period}";
+    logNotification(
+      $conn,
+      (int)$resident['user_id'],
+      'sms',
+      $subject,
+      $sms_meta['status'],
+      $sms_meta['detail']
+    );
+
+    return ['sms' => $sms_ok, 'status' => $sms_meta['status'], 'detail' => $sms_meta['detail']];
+  }
 
 /* ============================================================
    6. BROADCAST ANNOUNCEMENT (EMAIL ONLY)

@@ -2,6 +2,7 @@
 require_once('../auth/session_check.php');
 require_once('../config/database.php');
 require_once('../config/NotificationHelper.php');
+require_once('../config/EmailVerificationHelper.php');
 requireAdmin();
 
 // Always return JSON — called via fetch() from applications.php
@@ -9,6 +10,7 @@ header('Content-Type: application/json');
 
 $conn         = getDBConnection();
 $current_user = getCurrentUser();
+ensureEmailVerificationSchema($conn);
 
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 $app_id = isset($_GET['id'])     ? (int)$_GET['id'] : 0;
@@ -48,8 +50,7 @@ if ($action === 'approve') {
     }
 
     $account_number = 'HOA-' . strtoupper(substr(md5(uniqid()), 0, 8));
-    $temp_password  = generateTempPassword();
-    $hashed_pw      = password_hash($temp_password, PASSWORD_DEFAULT);
+    $default_password = 'maiaalta1234';
 
     $conn->begin_transaction();
     try {
@@ -57,7 +58,7 @@ if ($action === 'approve') {
         $ins_user = $conn->prepare("INSERT INTO users (account_number, password, email, first_name, last_name, contact_number, user_role, status, created_by)
                                     VALUES (?, ?, ?, ?, ?, ?, 'resident', 'active', ?)");
         $ins_user->bind_param("ssssssi",
-            $account_number, $hashed_pw,
+            $account_number, $default_password,
             $app['email'], $app['first_name'], $app['last_name'],
             $app['contact_number'], $current_user['user_id']
         );
@@ -90,17 +91,22 @@ if ($action === 'approve') {
         $upd->bind_param("ii", $current_user['user_id'], $app_id);
         $upd->execute();
 
+        // Copy application email verification status to resident account
+        syncUserEmailVerificationFromApplication($conn, $app_id, $new_user_id);
+
         $conn->commit();
 
         // 6a. Send approval notification (from NotificationHelper.php)
         notifyApplicantApplicationStatus($conn, $app_id, 'approved');
 
         // 6b. Send credentials in a separate email
-        sendCredentialsEmail($conn, $app, $account_number, $temp_password);
+        sendCredentialsEmail($conn, $app, $account_number, $default_password);
 
         echo json_encode([
             'success' => true,
-            'message' => 'Application approved! Account created and credentials sent to ' . $app['email']
+            'message' => 'Application approved successfully.',
+            'account_number' => $account_number,
+            'default_password' => $default_password
         ]);
 
     } catch (Exception $e) {
@@ -154,21 +160,21 @@ function sendCredentialsEmail($conn, $app, $account_number, $temp_password) {
           </div>
           <div style='padding:24px;background:#fff'>
             <p>Dear <strong>{$name}</strong>,</p>
-            <p>Your resident account has been set up. Here are your login credentials:</p>
+                        <p>Your resident account has been set up. Here are your login credentials:</p>
             <div style='background:#f0faf4;padding:20px;border-left:4px solid #27ae60;margin:16px 0;border-radius:4px'>
               <p style='margin:6px 0'><strong>Account Number:</strong> {$account_number}</p>
               <p style='margin:6px 0'><strong>Email:</strong> {$app['email']}</p>
-              <p style='margin:6px 0'><strong>Temporary Password:</strong>
+                            <p style='margin:6px 0'><strong>Default Password:</strong>
                 <code style='background:#e8f5e9;padding:3px 8px;border-radius:4px;font-size:15px;letter-spacing:1px'>{$temp_password}</code>
               </p>
               <p style='margin:6px 0'><strong>Unit Number:</strong> {$app['unit_number']}</p>
             </div>
-            <p style='color:#e74c3c;font-size:13px'>⚠️ Please log in and change your password immediately.</p>
+                        <p style='color:#e74c3c;font-size:13px'>⚠️ Please log in and change your password immediately.</p>
             <p style='color:#888;font-size:12px;margin-top:24px'>— Maia Alta HOA Administration</p>
           </div>
         </div>";
 
-    $result = $email_svc->sendEmail($app['email'], $name, $subject, $body, 'application');
+    $result = $email_svc->sendEmail($app['email'], $name, $subject, $body, 'verification');
     if (!$result['success']) {
         error_log("Credentials email failed for {$app['email']}");
     }

@@ -1,6 +1,7 @@
 <?php
 require_once('../auth/session_check.php');
 require_once('../config/database.php');
+require_once('../config/NotificationHelper.php');
 requireAdmin();
 
 $conn = getDBConnection();
@@ -34,6 +35,11 @@ switch ($action) {
         $expiry_value = ($expiry !== '') ? $expiry : null;
         $stmt->bind_param('sssis', $title, $content, $type, $current_user['user_id'], $expiry_value);
         if ($stmt->execute()) {
+            // Broadcast to residents via NotificationHelper
+            $broadcast_result = broadcastAnnouncement($conn, $title, $content, $type);
+            if ($broadcast_result === false) {
+                error_log('Announcement broadcast failed after create.');
+            }
             redirect_with('success=create');
         }
         redirect_with('error=create_failed');

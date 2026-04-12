@@ -1,10 +1,12 @@
 <?php
 require_once('../auth/session_check.php');
 require_once('../config/database.php');
+require_once('../config/EmailVerificationHelper.php');
 requireAdmin();
 
 $conn = getDBConnection();
 $current_user = getCurrentUser();
+ensureEmailVerificationSchema($conn);
 
 // Get all residents
 $residents_query = "SELECT u.*, h.unit_number, h.lot_number, h.block_number, h.resident_type
@@ -287,13 +289,20 @@ $next_account_number = generateAccountNumber($conn);
                 <td><strong><?php echo htmlspecialchars($resident['account_number']); ?></strong></td>
                 <td><?php echo htmlspecialchars($resident['first_name'] . ' ' . $resident['last_name']); ?></td>
                 <td><?php echo htmlspecialchars($resident['unit_number'] ?? 'N/A'); ?></td>
-                <td><?php echo htmlspecialchars($resident['email']); ?></td>
+                <td>
+                  <?php echo htmlspecialchars($resident['email']); ?><br>
+                  <?php if (!empty($resident['email_verified_at'])): ?>
+                    <small style="color:#1e8449;font-weight:600;">Verified</small>
+                  <?php else: ?>
+                    <small style="color:#b9770e;font-weight:600;">Not Verified</small>
+                  <?php endif; ?>
+                </td>
                 <td><?php echo htmlspecialchars($resident['contact_number'] ?? 'N/A'); ?></td>
                 <td class="status-<?php echo $resident['status']; ?>">
                   <?php echo ucfirst($resident['status']); ?>
                 </td>
                 <td>
-                  <button class="btn-edit" onclick="editResident(this)"
+                  <button class="btn-edit" onclick="editResident(<?php echo (int)$resident['user_id']; ?>)"
                     data-user-id="<?php echo $resident['user_id']; ?>"
                     data-account-number="<?php echo htmlspecialchars($resident['account_number']); ?>"
                     data-first-name="<?php echo htmlspecialchars($resident['first_name']); ?>"
@@ -655,8 +664,20 @@ $next_account_number = generateAccountNumber($conn);
       modal.classList.remove('show');
     }
 
-    function editResident(userId) {
-      window.location.href = 'edit_resident.php?user_id=' + userId;
+    function editResident(userIdOrButton) {
+      let userId = userIdOrButton;
+
+      // Backward-compatible guard in case this is accidentally called with a button element.
+      if (typeof userIdOrButton === 'object' && userIdOrButton !== null) {
+        userId = userIdOrButton.dataset ? userIdOrButton.dataset.userId : '';
+      }
+
+      if (!userId || isNaN(parseInt(userId, 10))) {
+        alert('Invalid resident ID. Please refresh and try again.');
+        return;
+      }
+
+      window.location.href = 'edit_resident.php?user_id=' + encodeURIComponent(userId);
     }
 
     function toggleStatus(userId, currentStatus) {

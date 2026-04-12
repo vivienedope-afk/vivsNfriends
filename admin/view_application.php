@@ -1,9 +1,11 @@
 <?php
 require_once('../auth/session_check.php');
 require_once('../config/database.php');
+require_once('../config/EmailVerificationHelper.php');
 requireAdmin();
 
 $conn = getDBConnection();
+ensureEmailVerificationSchema($conn);
 
 // Get application ID
 $app_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -379,6 +381,17 @@ if ($app['reviewed_by']) {
   <div class="app-detail-item">
     <div class="app-detail-label">Email Address</div>
     <div class="app-detail-value"><?php echo htmlspecialchars($app['email']); ?></div>
+  </div>
+
+  <div class="app-detail-item">
+    <div class="app-detail-label">Email Verification</div>
+    <div class="app-detail-value">
+      <?php if (!empty($app['email_verified_at'])): ?>
+        <span class="status-display approved">Verified</span>
+      <?php else: ?>
+        <span class="status-display pending">Not Verified</span>
+      <?php endif; ?>
+    </div>
   </div>
 
   <div class="app-detail-item">

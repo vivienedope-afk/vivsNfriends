@@ -64,7 +64,7 @@ if ($user_id > 0) {
           <div class="form-grid">
             <div>
               <label>Account Number</label>
-              <input type="text" value="<?php echo htmlspecialchars($resident['account_number']); ?>" readonly>
+              <input type="text" name="account_number" value="<?php echo htmlspecialchars($resident['account_number']); ?>" required>
             </div>
             <div>
               <label>Status</label>

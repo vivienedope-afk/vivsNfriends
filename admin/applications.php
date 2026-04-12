@@ -1,10 +1,12 @@
 <?php
 require_once('../auth/session_check.php');
 require_once('../config/database.php');
+require_once('../config/EmailVerificationHelper.php');
 requireAdmin();
 
 $conn = getDBConnection();
 $current_user = getCurrentUser();
+ensureEmailVerificationSchema($conn);
 
 $filter = $_GET['filter'] ?? 'pending';
 $search = $_GET['search'] ?? '';
@@ -165,6 +167,7 @@ $total_count    = $pending_count + $approved_count + $rejected_count;
                 <th>Date Applied</th>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Email Verified</th>
                 <th>Contact</th>
                 <th>Unit</th>
                 <th>Type</th>
@@ -178,6 +181,13 @@ $total_count    = $pending_count + $approved_count + $rejected_count;
                   <td><?php echo date('M d, Y', strtotime($app['created_at'])); ?></td>
                   <td><strong><?php echo htmlspecialchars($app['first_name'].' '.$app['last_name']); ?></strong></td>
                   <td><?php echo htmlspecialchars($app['email']); ?></td>
+                  <td>
+                    <?php if (!empty($app['email_verified_at'])): ?>
+                      <span class="status-badge status-approved">Verified</span>
+                    <?php else: ?>
+                      <span class="status-badge status-pending">Not Verified</span>
+                    <?php endif; ?>
+                  </td>
                   <td><?php echo htmlspecialchars($app['contact_number']); ?></td>
                   <td><?php echo htmlspecialchars($app['unit_number']); ?></td>
                   <td><?php echo ucfirst($app['resident_type']); ?></td>
@@ -296,6 +306,11 @@ $total_count    = $pending_count + $approved_count + $rejected_count;
       setTimeout(() => { t.style.display = 'none'; }, 4000);
     }
 
+    function showApprovalCredentials(accountNumber, defaultPassword) {
+      const message = 'Approved!\nAccount Number: ' + accountNumber + '\nDefault Password: ' + defaultPassword;
+      alert(message);
+    }
+
     /* ─── VIEW MODAL ─── */
     function viewApplication(appId) {
       const modal = document.getElementById('viewApplicationModal');
@@ -327,6 +342,9 @@ $total_count    = $pending_count + $approved_count + $rejected_count;
               if (data.success) {
                 closeModal();
                 showToast(data.message, 'success');
+                if (data.account_number && data.default_password) {
+                  showApprovalCredentials(data.account_number, data.default_password);
+                }
                 setTimeout(() => location.reload(), 1800);
               } else {
                 showToast(data.message || 'Approval failed.', 'error');

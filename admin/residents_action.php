@@ -77,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'edit') {
     $user_id = (int)($_POST['user_id'] ?? 0);
     $household_id = (int)($_POST['household_id'] ?? 0);
+    $account_number = trim($_POST['account_number'] ?? '');
     $first_name = trim($_POST['first_name'] ?? '');
     $last_name = trim($_POST['last_name'] ?? '');
     $email = trim($_POST['email'] ?? '');
@@ -88,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $resident_type = trim($_POST['resident_type'] ?? 'owner');
     $new_password = trim($_POST['new_password'] ?? '');
 
-    if ($user_id <= 0 || $first_name === '' || $last_name === '' || $email === '' || $unit_number === '') {
+    if ($user_id <= 0 || $account_number === '' || $first_name === '' || $last_name === '' || $email === '' || $unit_number === '') {
         header('Location: residents.php?error=failed');
         exit();
     }
@@ -115,16 +116,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         exit();
     }
 
+    $account_check_query = "SELECT user_id FROM users WHERE account_number = ? AND user_id != ? LIMIT 1";
+    $account_check_stmt = $conn->prepare($account_check_query);
+    $account_check_stmt->bind_param("si", $account_number, $user_id);
+    $account_check_stmt->execute();
+    $account_check_result = $account_check_stmt->get_result();
+    if ($account_check_result && $account_check_result->num_rows > 0) {
+        header('Location: residents.php?error=exists');
+        exit();
+    }
+
     $conn->begin_transaction();
     try {
         if ($new_password !== '') {
-            $update_user_query = "UPDATE users SET first_name = ?, last_name = ?, email = ?, contact_number = ?, status = ?, password = ? WHERE user_id = ? AND user_role = 'resident'";
+            $update_user_query = "UPDATE users SET account_number = ?, first_name = ?, last_name = ?, email = ?, contact_number = ?, status = ?, password = ? WHERE user_id = ? AND user_role = 'resident'";
             $update_user_stmt = $conn->prepare($update_user_query);
-            $update_user_stmt->bind_param("ssssssi", $first_name, $last_name, $email, $contact_number, $status, $new_password, $user_id);
+            $update_user_stmt->bind_param("sssssssi", $account_number, $first_name, $last_name, $email, $contact_number, $status, $new_password, $user_id);
         } else {
-            $update_user_query = "UPDATE users SET first_name = ?, last_name = ?, email = ?, contact_number = ?, status = ? WHERE user_id = ? AND user_role = 'resident'";
+            $update_user_query = "UPDATE users SET account_number = ?, first_name = ?, last_name = ?, email = ?, contact_number = ?, status = ? WHERE user_id = ? AND user_role = 'resident'";
             $update_user_stmt = $conn->prepare($update_user_query);
-            $update_user_stmt->bind_param("sssssi", $first_name, $last_name, $email, $contact_number, $status, $user_id);
+            $update_user_stmt->bind_param("ssssssi", $account_number, $first_name, $last_name, $email, $contact_number, $status, $user_id);
         }
         $update_user_stmt->execute();
 

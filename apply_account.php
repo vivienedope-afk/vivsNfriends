@@ -37,6 +37,8 @@
           <?php 
             if($_GET['error'] == 'exists') {
               echo 'An application with this email or contact number already exists.';
+            } elseif($_GET['error'] == 'email_not_verified') {
+              echo 'Please verify your email first before submitting your application.';
             } elseif($_GET['error'] == 'file_error') {
               echo 'Error uploading ID proof. Please try again.';
             } elseif($_GET['error'] == 'invalid_file') {
@@ -72,6 +74,13 @@
             <label for="email">Email Address <span class="required">*</span></label>
             <input type="email" id="email" name="email" required maxlength="100">
             <span class="input-hint">Will be used for account notifications</span>
+            <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button type="button" id="sendCodeBtn" class="btn-submit" style="width:auto; padding:8px 14px;">Send Verification Code</button>
+              <input type="text" id="email_code" maxlength="6" placeholder="Enter 6-digit code" style="max-width:180px; padding:9px; border:1px solid #ccc; border-radius:6px;">
+              <button type="button" id="verifyCodeBtn" class="btn-submit" style="width:auto; padding:8px 14px;">Verify Email</button>
+            </div>
+            <div id="emailVerifyStatus" class="input-hint" style="margin-top:8px;">Email not verified yet</div>
+            <input type="hidden" id="email_verified" name="email_verified" value="0">
           </div>
 
           <div class="form-group">
@@ -141,6 +150,86 @@
   </div>
 
   <script>
+    const emailInput = document.getElementById('email');
+    const emailCodeInput = document.getElementById('email_code');
+    const sendCodeBtn = document.getElementById('sendCodeBtn');
+    const verifyCodeBtn = document.getElementById('verifyCodeBtn');
+    const emailVerifiedInput = document.getElementById('email_verified');
+    const emailVerifyStatus = document.getElementById('emailVerifyStatus');
+
+    function setEmailVerificationState(verified, message, isError = false) {
+      emailVerifiedInput.value = verified ? '1' : '0';
+      emailVerifyStatus.textContent = message;
+      emailVerifyStatus.style.color = verified ? '#1e8449' : (isError ? '#c0392b' : '#666');
+    }
+
+    emailInput.addEventListener('input', function() {
+      setEmailVerificationState(false, 'Email changed. Please verify again.');
+    });
+
+    sendCodeBtn.addEventListener('click', async function() {
+      const email = emailInput.value.trim();
+      if (!email) {
+        alert('Please enter your email first.');
+        return;
+      }
+
+      sendCodeBtn.disabled = true;
+      sendCodeBtn.textContent = 'Sending...';
+
+      try {
+        const body = new URLSearchParams({ email });
+        const res = await fetch('send_preapply_email_code.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString()
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setEmailVerificationState(false, data.message || 'Failed to send code', true);
+          return;
+        }
+        setEmailVerificationState(false, 'Verification code sent. Check your email.');
+      } catch (e) {
+        setEmailVerificationState(false, 'Failed to send verification code.', true);
+      } finally {
+        sendCodeBtn.disabled = false;
+        sendCodeBtn.textContent = 'Send Verification Code';
+      }
+    });
+
+    verifyCodeBtn.addEventListener('click', async function() {
+      const email = emailInput.value.trim();
+      const code = emailCodeInput.value.trim();
+      if (!email || !code) {
+        alert('Enter your email and verification code.');
+        return;
+      }
+
+      verifyCodeBtn.disabled = true;
+      verifyCodeBtn.textContent = 'Verifying...';
+
+      try {
+        const body = new URLSearchParams({ email, code });
+        const res = await fetch('verify_preapply_email_code.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString()
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setEmailVerificationState(false, data.message || 'Verification failed', true);
+          return;
+        }
+        setEmailVerificationState(true, 'Email verified. You can now submit your application.');
+      } catch (e) {
+        setEmailVerificationState(false, 'Verification request failed.', true);
+      } finally {
+        verifyCodeBtn.disabled = false;
+        verifyCodeBtn.textContent = 'Verify Email';
+      }
+    });
+
     // File preview
     document.getElementById('id_proof').addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -185,6 +274,7 @@
     document.getElementById('applicationForm').addEventListener('submit', function(e) {
       const contactNumber = document.getElementById('contact_number').value;
       const terms = document.getElementById('terms').checked;
+      const emailVerified = document.getElementById('email_verified').value === '1';
       
       if (!contactNumber.match(/^09[0-9]{9}$/)) {
         e.preventDefault();
@@ -195,6 +285,12 @@
       if (!terms) {
         e.preventDefault();
         alert('Please agree to the terms and conditions');
+        return false;
+      }
+
+      if (!emailVerified) {
+        e.preventDefault();
+        alert('Please verify your email before submitting your application.');
         return false;
       }
       

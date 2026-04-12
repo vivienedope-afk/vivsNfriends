@@ -1,6 +1,7 @@
 <?php
 require_once('auth/session_check.php');
 require_once('config/database.php');
+require_once('config/NotificationHelper.php');
 
 header('Content-Type: application/json');
 
@@ -78,6 +79,12 @@ $stmt = $conn->prepare($insert_query);
 $stmt->bind_param("isssss", $household_id, $facility, $booking_date, $start_time, $end_time, $purpose);
 
 if ($stmt->execute()) {
+    $booking_id = (int)$conn->insert_id;
+    // Non-blocking: reservation success should not fail even if email delivery fails.
+    $notif = notifyAdminNewBooking($conn, $booking_id);
+    if ($notif === false) {
+        error_log('notifyAdminNewBooking failed for booking_id=' . $booking_id);
+    }
     echo json_encode(['success' => true, 'message' => 'Reservation submitted successfully']);
 } else {
     echo json_encode(['success' => false, 'message' => 'Failed to submit reservation']);

@@ -1,6 +1,7 @@
 <?php
 require_once('../auth/session_check.php');
 require_once('../config/database.php');
+require_once('../config/NotificationHelper.php');
 requireAdmin();
 
 $conn = getDBConnection();
@@ -30,6 +31,11 @@ if (isset($status_map[$action])) {
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('sisi', $new_status, $current_user['user_id'], $remarks, $booking_id);
     if ($stmt->execute()) {
+        // Non-blocking notification so status update remains successful even if email fails.
+        $notif = notifyResidentBookingStatus($conn, $booking_id);
+        if ($notif === false || (is_array($notif) && empty($notif['email']) && empty($notif['sms']))) {
+            error_log('notifyResidentBookingStatus failed or skipped for booking_id=' . $booking_id);
+        }
         header('Location: bookings.php?success=status');
         exit();
     }

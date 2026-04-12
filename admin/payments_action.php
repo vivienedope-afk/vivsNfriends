@@ -1,20 +1,39 @@
 <?php
 require_once('../auth/session_check.php');
 require_once('../config/database.php');
+require_once('../config/NotificationHelper.php');
 requireAdmin();
 
 $conn = getDBConnection();
 $current_user = getCurrentUser();
+
+function ensureMonthlyDuesMetaColumns($conn) {
+    $conn->query("ALTER TABLE monthly_dues ADD COLUMN IF NOT EXISTS title VARCHAR(150) NULL AFTER due_year");
+    $conn->query("ALTER TABLE monthly_dues ADD COLUMN IF NOT EXISTS description TEXT NULL AFTER title");
+}
+
+ensureMonthlyDuesMetaColumns($conn);
 
 $action = isset($_POST['action']) ? $_POST['action'] : (isset($_GET['action']) ? $_GET['action'] : '');
 
 switch ($action) {
     case 'add_dues':
         $household_id = (int)$_POST['household_id'];
+        $title = trim($_POST['title'] ?? '');
+        $description = trim($_POST['description'] ?? '');
         $due_month = $_POST['due_month'];
         $due_year = (int)$_POST['due_year'];
         $amount = (float)$_POST['amount'];
         $due_date = $_POST['due_date'];
+
+        if ($household_id <= 0 || $title === '' || $due_month === '' || $due_year <= 0 || $amount < 0 || $due_date === '') {
+            header("Location: payments.php?error=add_failed");
+            exit();
+        }
+
+        if ($description === '') {
+            $description = null;
+        }
         
         // Check if dues already exist for this household and period
         $check_query = "SELECT dues_id FROM monthly_dues WHERE household_id = ? AND due_month = ? AND due_year = ?";
@@ -28,12 +47,19 @@ switch ($action) {
             exit();
         }
         
-        $insert_query = "INSERT INTO monthly_dues (household_id, due_month, due_year, amount, due_date, status) 
-                        VALUES (?, ?, ?, ?, ?, 'unpaid')";
+        $insert_query = "INSERT INTO monthly_dues (household_id, due_month, due_year, title, description, amount, due_date, status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'unpaid')";
         $stmt = $conn->prepare($insert_query);
-        $stmt->bind_param("isids", $household_id, $due_month, $due_year, $amount, $due_date);
+        $stmt->bind_param("isissds", $household_id, $due_month, $due_year, $title, $description, $amount, $due_date);
         
         if ($stmt->execute()) {
+            $new_dues_id = (int)$conn->insert_id;
+            // Non-blocking SMS: dues creation remains successful even if SMS fails.
+            $sms_notif = sendNewDuePostedSms($conn, $new_dues_id);
+            if ($sms_notif === false || (is_array($sms_notif) && empty($sms_notif['sms']))) {
+                error_log('sendNewDuePostedSms failed or skipped for dues_id=' . $new_dues_id);
+            }
+
             header("Location: payments.php?success=dues_added");
         } else {
             header("Location: payments.php?error=add_failed");
@@ -80,7 +106,17 @@ switch ($action) {
             $stmt->execute();
             
             $conn->commit();
-            header("Location: payments.php?success=payment_recorded");
+
+            // Non-blocking SMS confirmation: payment save should stay successful even if SMS fails.
+            $sms_notif = sendDuePaymentSuccessSms($conn, $dues_id, $amount_paid, $payment_date, $payment_method);
+            $sms_status = 'failed';
+            if (is_array($sms_notif)) {
+                $sms_status = $sms_notif['status'] ?? (!empty($sms_notif['sms']) ? 'queued' : 'failed');
+            } else {
+                error_log('sendDuePaymentSuccessSms failed or skipped for dues_id=' . $dues_id);
+            }
+
+            header("Location: payments.php?success=payment_recorded&sms=" . urlencode($sms_status));
         } catch (Exception $e) {
             $conn->rollback();
             header("Location: payments.php?error=payment_failed");
@@ -89,22 +125,28 @@ switch ($action) {
 
     case 'edit_dues':
         $dues_id = (int)($_POST['dues_id'] ?? 0);
+        $title = trim($_POST['title'] ?? '');
+        $description = trim($_POST['description'] ?? '');
         $due_month = $_POST['due_month'] ?? '';
         $due_year = (int)($_POST['due_year'] ?? 0);
         $amount = (float)($_POST['amount'] ?? 0);
         $due_date = $_POST['due_date'] ?? '';
         $status = $_POST['status'] ?? 'unpaid';
 
-        if ($dues_id <= 0 || $due_month === '' || $due_year <= 0 || $amount < 0 || $due_date === '' || !in_array($status, ['unpaid', 'paid', 'overdue'], true)) {
+        if ($dues_id <= 0 || $title === '' || $due_month === '' || $due_year <= 0 || $amount < 0 || $due_date === '' || !in_array($status, ['unpaid', 'paid', 'overdue'], true)) {
             header("Location: payments.php?error=invalid_edit");
             exit();
         }
 
+        if ($description === '') {
+            $description = null;
+        }
+
         $edit_query = "UPDATE monthly_dues
-                       SET due_month = ?, due_year = ?, amount = ?, due_date = ?, status = ?
+                       SET due_month = ?, due_year = ?, title = ?, description = ?, amount = ?, due_date = ?, status = ?
                        WHERE dues_id = ?";
         $stmt = $conn->prepare($edit_query);
-        $stmt->bind_param("sidssi", $due_month, $due_year, $amount, $due_date, $status, $dues_id);
+        $stmt->bind_param("sissdssi", $due_month, $due_year, $title, $description, $amount, $due_date, $status, $dues_id);
 
         if ($stmt->execute()) {
             header("Location: payments.php?success=dues_updated");
