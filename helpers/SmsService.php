@@ -7,7 +7,7 @@
 class SmsService {
 
     // Use the LOCAL SERVICE token from your phone app, NOT the push notification API key
-    private $sms_gateway_url = 'http://192.168.1.5:8082/';  // Root endpoint, NOT /api/send
+    private $sms_gateway_url = 'http://172.20.10.144:8082/';  // Root endpoint, NOT /api/send
     private $sms_gateway_token = '22322bb4-181a-403c-9d91-34bf116d7fee';  // Local Service Token
     private $db;
 
@@ -33,6 +33,7 @@ class SmsService {
             'to' => $to_phone,
             'message' => $message,
         ];
+        //loko kayo HAHAHAHAHA tangina damit main branch ginamit nyo mga loko HAHAHAHAHAHAHAHAHAHAHHAHAHAHAHAHAHAHAHAHHAHAHAHAHAHAHAHAHAHHAHAHAHA
 
         $ch = curl_init($this->sms_gateway_url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

@@ -286,3 +286,35 @@ CREATE TABLE email_logs (
     INDEX idx_status (status),
     INDEX idx_sent_at (sent_at)
 );
+
+-- Unified Notification Log Table (for unified notification tracking)
+CREATE TABLE IF NOT EXISTS notification_log (
+    log_id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    notification_type ENUM('email', 'sms', 'push') DEFAULT 'email',
+    subject VARCHAR(255) NOT NULL,
+    status ENUM('sent', 'failed', 'skipped') DEFAULT 'sent',
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_created_at (created_at),
+    INDEX idx_status (status)
+);
+
+-- SMS Gateway Configuration Table
+CREATE TABLE IF NOT EXISTS sms_gateway_config (
+    config_id INT PRIMARY KEY AUTO_INCREMENT,
+    gateway_type ENUM('twilio', 'aws_sns', 'mock') DEFAULT 'mock',
+    is_active BOOLEAN DEFAULT FALSE,
+    config_data JSON,
+    last_tested TIMESTAMP NULL,
+    updated_by INT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Insert default SMS gateway config (mock)
+INSERT INTO sms_gateway_config (gateway_type, is_active, config_data) 
+VALUES ('mock', TRUE, '{}')
+ON DUPLICATE KEY UPDATE is_active = TRUE;

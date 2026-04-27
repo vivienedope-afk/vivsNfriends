@@ -3,6 +3,7 @@ require_once('../auth/session_check.php');
 require_once('../config/database.php');
 require_once('../helpers/EmailService.php');
 require_once('../helpers/SmsService.php');
+require_once('../config/NotificationHelper.php');
 requireAdmin();
 
 $conn = getDBConnection();
@@ -234,29 +235,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_notifications'])
         <div class="card-content">
           <table class="data-table">
             <thead>
-              <tr>
-                <th>Type</th>
-                <th>Unit</th>
-                <th>Resident</th>
-                <th>Contact</th>
-                <th>Amount</th>
-                <th>Period</th>
-                <th>Status</th>
-                <th>Details</th>
-              </tr>
+              <tr><th>Type</th><th>Unit</th><th>Resident</th><th>Contact</th><th>Amount</th><th>Period</th><th>Status</th><th>Details</th></tr>
             </thead>
             <tbody>
               <?php foreach ($send_results as $result): ?>
-                <tr>
-                  <td><?php echo strtoupper($result['type']); ?></td>
-                  <td><?php echo htmlspecialchars($result['unit']); ?></td>
-                  <td><?php echo htmlspecialchars($result['name']); ?></td>
-                  <td><?php echo htmlspecialchars($result['contact']); ?></td>
-                  <td>₱<?php echo number_format($result['amount'], 2); ?></td>
-                  <td><?php echo $result['month'] . ' ' . $result['year']; ?></td>
-                  <td><?php echo $result['success'] ? '<span class="badge badge-success">Sent</span>' : '<span class="badge badge-danger">Failed</span>'; ?></td>
-                  <td><?php echo htmlspecialchars($result['details'] ?? ''); ?></td>
-                </tr>
+                <tr><td><?php echo strtoupper($result['type']); ?></td>
+                    <td><?php echo htmlspecialchars($result['unit']); ?></td>
+                    <td><?php echo htmlspecialchars($result['name']); ?></td>
+                    <td><?php echo htmlspecialchars($result['contact']); ?></td>
+                    <td>₱<?php echo number_format($result['amount'], 2); ?></td>
+                    <td><?php echo $result['month'] . ' ' . $result['year']; ?></td>
+                    <td><?php echo $result['success'] ? '<span class="badge badge-success">Sent</span>' : '<span class="badge badge-danger">Failed</span>'; ?></td>
+                    <td><?php echo htmlspecialchars($result['details'] ?? ''); ?></td></tr>
               <?php endforeach; ?>
             </tbody>
           </table>

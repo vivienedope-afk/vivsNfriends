@@ -102,24 +102,25 @@ $conn->query($update_overdue);
     .btn-primary:hover { background: #8b5a3c; }
     .dues-table { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .dues-table table { width: 100%; border-collapse: collapse; }
-    .dues-table th { background: linear-gradient(135deg, #fedea3 0%, #f5d18a 100%); padding: 15px; text-align: left; font-weight: 600; color: #79491b; border-bottom: 2px solid #c17f59; }
-    .dues-table td { padding: 15px; border-bottom: 1px solid #eee; }
+    .dues-table th { background: linear-gradient(135deg, #fedea3 0%, #f5d18a 100%); padding: 14px 12px; text-align: left; font-weight: 600; color: #79491b; border-bottom: 2px solid #c17f59; font-size: 13px; }
+    .dues-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 13px; }
     .dues-table tr:hover { background: #f8f9fa; }
-    .badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .badge { padding: 5px 10px; border-radius: 16px; font-size: 11px; font-weight: 600; display: inline-block; }
     .badge.paid { background: #d4edda; color: #155724; }
     .badge.unpaid { background: #fff3cd; color: #856404; }
     .badge.overdue { background: #f8d7da; color: #721c24; }
     .badge.verified { background: #d1ecf1; color: #0c5460; }
     .badge.pending-verify { background: #f8d7da; color: #721c24; }
-    .action-btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; margin-right: 5px; }
+    .actions-cell { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .action-btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; transition: all 0.2s ease; }
     .btn-record { background: #28a745; color: white; }
-    .btn-record:hover { background: #218838; }
+    .btn-record:hover { background: #218838; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     .btn-view { background: #17a2b8; color: white; }
-    .btn-view:hover { background: #138496; }
+    .btn-view:hover { background: #138496; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     .btn-verify { background: #faa500; color: white; }
-    .btn-verify:hover { background: #ff8c00; }
+    .btn-verify:hover { background: #ff8c00; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     .btn-edit { background: #007bff; color: white; }
-    .btn-edit:hover { background: #0056b3; }
+    .btn-edit:hover { background: #0056b3; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     .empty-state { text-align: center; padding: 60px 20px; color: #6c757d; }
     .empty-state i { font-size: 64px; margin-bottom: 20px; opacity: 0.3; }
     
@@ -294,23 +295,25 @@ $conn->query($update_overdue);
                   <?php endif; ?>
                 </td>
                 <td>
-                  <?php if ($due['status'] == 'unpaid' || $due['status'] == 'overdue'): ?>
-                    <button class="action-btn btn-record" onclick="openRecordPaymentModal(<?php echo $due['dues_id']; ?>, '<?php echo htmlspecialchars($due['unit_number']); ?>', <?php echo $due['amount']; ?>, '<?php echo $due['due_month'] . ' ' . $due['due_year']; ?>')">
-                      <i class="fas fa-money-bill"></i> Record Payment
+                  <div class="actions-cell">
+                    <?php if ($due['status'] == 'unpaid' || $due['status'] == 'overdue'): ?>
+                      <button class="action-btn btn-record" onclick="openRecordPaymentModal(<?php echo $due['dues_id']; ?>, '<?php echo htmlspecialchars($due['unit_number']); ?>', <?php echo $due['amount']; ?>, '<?php echo $due['due_month'] . ' ' . $due['due_year']; ?>')">
+                        <i class="fas fa-money-bill"></i> Record
+                      </button>
+                    <?php elseif ($due['payment_id'] && !$due['verified_at']): ?>
+                      <button class="action-btn btn-verify" onclick="verifyPayment(<?php echo $due['payment_id']; ?>)">
+                        <i class="fas fa-check"></i> Verify
+                      </button>
+                    <?php endif; ?>
+                    <?php if ($due['payment_id']): ?>
+                      <button class="action-btn btn-view" onclick="viewPaymentDetails(<?php echo $due['payment_id']; ?>)">
+                        <i class="fas fa-eye"></i> View
+                      </button>
+                    <?php endif; ?>
+                    <button class="action-btn btn-edit" onclick="editDues(<?php echo $due['dues_id']; ?>)">
+                      <i class="fas fa-edit"></i> Edit
                     </button>
-                  <?php elseif ($due['payment_id'] && !$due['verified_at']): ?>
-                    <button class="action-btn btn-verify" onclick="verifyPayment(<?php echo $due['payment_id']; ?>)">
-                      <i class="fas fa-check"></i> Verify
-                    </button>
-                  <?php endif; ?>
-                  <?php if ($due['payment_id']): ?>
-                    <button class="action-btn btn-view" onclick="viewPaymentDetails(<?php echo $due['payment_id']; ?>)">
-                      <i class="fas fa-eye"></i> View
-                    </button>
-                  <?php endif; ?>
-                  <button class="action-btn btn-edit" onclick="editDues(<?php echo $due['dues_id']; ?>)">
-                    <i class="fas fa-edit"></i> Edit
-                  </button>
+                  </div>
                 </td>
               </tr>
             <?php endforeach; ?>

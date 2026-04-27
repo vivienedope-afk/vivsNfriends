@@ -1,5 +1,6 @@
 <?php
 require_once('config/database.php');
+require_once('config/NotificationHelper.php');
 
 header('Content-Type: text/html; charset=UTF-8');
 
@@ -119,7 +120,12 @@ $insert_stmt->bind_param(
 );
 
 if ($insert_stmt->execute()) {
-    // Success - redirect with success message
+    // Notify admin of the new application
+    $application_id = $conn->insert_id;
+    if (!notifyAdminNewApplication($conn, $application_id)) {
+        error_log("Admin notification failed for application_id: " . $application_id);
+    }
+
     header('Location: apply_account.php?success=1');
     exit();
 } else {
